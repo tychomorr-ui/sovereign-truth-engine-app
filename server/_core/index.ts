@@ -66,8 +66,10 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen({ port, host: isProduction ? "127.0.0.1" : undefined }, () => {
-    console.log(`Server running on http://${isProduction ? "127.0.0.1" : "localhost"}:${port}/`);
+  const host = process.env.HOST || (isProduction ? "0.0.0.0" : undefined);
+  server.listen({ port, host }, () => {
+    const displayHost = host || "localhost";
+    console.log(`Server running on http://${displayHost}:${port}/`);
   });
 }
 

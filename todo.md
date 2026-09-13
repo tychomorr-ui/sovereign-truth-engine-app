@@ -211,3 +211,10 @@
 - [x] Repair the Express 5 static-route regression detected during dependency remediation and validate the standalone production-server smoke test
 - [x] Apply the updated Nginx configuration, fixed port `3210`, authentication rate limits, and TLS/HSTS configuration on the São Paulo Lightsail instance, then verify local and public headers
 - [x] Authorize the São Paulo Lightsail instance to reach the `portal-db-01` RDS endpoint on MySQL port `3306`, then verify the production database connection
+
+## Managed Deployment Startup-Probe Repair
+- [x] Bind the managed production server on the externally reachable interface instead of loopback so the platform startup probe can connect
+- [x] Preserve the São Paulo systemd and Nginx deployment behavior and verify both startup modes
+- [x] Re-run tests, build, and deployment smoke validation before publishing the repair
+
+> Audit note: the managed deployment log showed `Server running on http://127.0.0.1:3000/` while the platform TCP probe failed on port `3000`; the likely cause is production binding to `127.0.0.1` rather than `0.0.0.0`.
