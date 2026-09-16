@@ -5,7 +5,7 @@
  * strategy-specific approaches, and learning memory updates.
  */
 
-import { invokeBedrock, isBedrockConfigured } from "./bedrock-gateway";
+import { invokeLocal } from "./local-gateway";
 import type { UserContext } from "./portal-context-retrieval";
 import { formatContextForLLM } from "./portal-context-retrieval";
 import type { StrategySelection, DialogueStrategy } from "./portal-strategy-selector";
@@ -24,7 +24,7 @@ export interface AdaptiveResponse {
     patternsActivated: string[];
     breakthroughIndicators: string[];
     nextSuggestedAction: string;
-    provider: "bedrock" | "unavailable";
+    provider: "local" | "deterministic";
     modelId?: string;
     responseObjective: ResponseObjective;
     carryoverMessageCount: number;
@@ -56,31 +56,17 @@ export async function generateAdaptiveResponse(
     // Build message history with context injection
     const messages = buildMessageHistory(userMessage, recentMessages, context, strategy);
 
-    // KEIRA's sovereign runtime speaks only through the owner-controlled Bedrock gateway.
-    let portalResponse: string;
-    let provider: AdaptiveResponse["metadata"]["provider"] = "unavailable";
-    let modelId: string | undefined;
-
-    if (isBedrockConfigured()) {
-      try {
-        const normalizedVariation = Math.max(0, Math.min(1, Number.isFinite(responseVariation) ? Number(responseVariation) / 100 : 0.1));
-        const bedrockResponse = await invokeBedrock({
-          system: systemPrompt,
-          messages,
-          maxTokens: 4096,
-          temperature: normalizedVariation,
-          topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
-        });
-        portalResponse = bedrockResponse.content;
-        provider = "bedrock";
-        modelId = bedrockResponse.modelId;
-      } catch (bedrockError) {
-        console.error("[KEIRA Adaptive Response] Bedrock request failed", bedrockError);
-        portalResponse = "KEIRA's Bedrock channel is unavailable. Verify the configured region, model access, and bearer token, then retry.";
-      }
-    } else {
-      portalResponse = "KEIRA's Bedrock channel is not configured. Add a region, a valid model or inference-profile ID, and a Bedrock bearer token or IAM role.";
-    }
+    const normalizedVariation = Math.max(0, Math.min(1, Number.isFinite(responseVariation) ? Number(responseVariation) / 100 : 0.1));
+    const localResponse = await invokeLocal({
+      system: systemPrompt,
+      messages,
+      maxTokens: 4096,
+      temperature: normalizedVariation,
+      topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
+    });
+    const portalResponse = localResponse.content;
+    const provider = localResponse.provider;
+    const modelId = localResponse.modelId;
 
     // Extract learning updates from response
     const learningUpdates = extractLearningUpdates(portalResponse, context);

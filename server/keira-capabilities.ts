@@ -1,4 +1,4 @@
-import { getBedrockAuthMode, isBedrockConfigured } from "./bedrock-gateway";
+import { getLocalProvider, isLocalModelConfigured } from "./local-gateway";
 
 export type KeiraCapabilityStatus = "available" | "awaiting-configuration" | "browser-dependent";
 
@@ -18,23 +18,18 @@ export type KeiraCapability = {
   detail: string;
 };
 
-/**
- * Non-sensitive, honest feature availability for the authenticated console.
- * This never exposes credentials, model IDs, bucket names, or infrastructure
- * topology.
- */
 export function getKeiraCapabilities(): KeiraCapability[] {
-  const bedrockReady = isBedrockConfigured();
-  const authMode = getBedrockAuthMode();
+  const localReady = isLocalModelConfigured();
+  const provider = getLocalProvider();
 
   return [
     {
       id: "reasoning",
-      label: "Bedrock reasoning",
-      status: bedrockReady ? "available" : "awaiting-configuration",
-      detail: bedrockReady
-        ? `Server-side inference is configured through ${authMode === "bearer" ? "a bearer credential" : "IAM credentials"}.`
-        : "Awaiting a configured Bedrock region, model, and server-side credential.",
+      label: localReady ? "Self-hosted local reasoning" : "Deterministic runtime",
+      status: "available",
+      detail: localReady
+        ? "Inference is routed to the configured operator-controlled OpenAI-compatible local model endpoint."
+        : "A bounded deterministic responder is active. No remote model, cloud inference, or fabricated intelligence is implied.",
     },
     {
       id: "conversation-memory",
@@ -64,13 +59,13 @@ export function getKeiraCapabilities(): KeiraCapability[] {
       id: "realtime-voice",
       label: "Realtime voice",
       status: "awaiting-configuration",
-      detail: "Natural low-latency interruption and streaming speech require a separately configured realtime voice provider; browser voice remains the current fallback.",
+      detail: "Natural low-latency interruption and streaming speech require a separately configured local voice runtime; browser voice remains the current fallback.",
     },
     {
       id: "research",
       label: "Cited research",
       status: "awaiting-configuration",
-      detail: "Research mode will activate only after a search provider and source-citation workflow are configured; model-only answers are not represented as live research.",
+      detail: "Research mode is inactive until a local retrieval and source-citation workflow is configured.",
     },
     {
       id: "personalization",
@@ -82,7 +77,7 @@ export function getKeiraCapabilities(): KeiraCapability[] {
       id: "response-calibration",
       label: "Response calibration",
       status: "available",
-      detail: "The operator’s saved response-variation preference is applied to future server-side inference requests.",
+      detail: `Saved response variation is applied to the ${provider} runtime on future turns.`,
     },
   ];
 }

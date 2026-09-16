@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 vi.mock("./_core/llm", () => ({
   invokeLLM: vi.fn(async () => ({
-    id: "test-bedrock-response",
+    id: "test-local-response",
     created: 0,
     model: "test-model",
     choices: [{

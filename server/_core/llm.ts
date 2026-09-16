@@ -1,4 +1,4 @@
-import { invokeBedrock } from "../bedrock-gateway";
+import { invokeLocal } from "../local-gateway";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -77,7 +77,7 @@ function contentToText(content: MessageContent | MessageContent[]): string {
   return parts.map((part) => {
     if (typeof part === "string") return part;
     if (part.type === "text") return part.text;
-    throw new Error("The Bedrock-only compatibility adapter accepts text content only.");
+    throw new Error("The local compatibility adapter accepts text content only.");
   }).join("\n").trim();
 }
 
@@ -107,12 +107,12 @@ function schemaInstruction(params: InvokeParams): string | null {
 
 /**
  * Compatibility entrypoint for inactive legacy modules. It preserves the former
- * OpenAI-shaped result contract while routing exclusively through the Portal's
- * direct Amazon Bedrock gateway. Tool execution is intentionally not emulated.
+ * OpenAI-shaped result contract while routing through a self-hosted local model
+ * or a transparent deterministic fallback. Tool execution is intentionally not emulated.
  */
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   if (params.tools?.length) {
-    throw new Error("Tool execution is not available through the Bedrock-only compatibility adapter.");
+    throw new Error("Tool execution is not available through the local compatibility adapter.");
   }
 
   const systemParts: string[] = [
@@ -136,17 +136,17 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   const instruction = schemaInstruction(params);
   if (instruction) systemParts.push(instruction);
   if (!chatMessages.length) {
-    throw new Error("At least one non-system message is required for Amazon Bedrock invocation.");
+    throw new Error("At least one non-system message is required for local invocation.");
   }
 
-  const response = await invokeBedrock({
+  const response = await invokeLocal({
     system: systemParts.join("\n\n"),
     messages: chatMessages,
     maxTokens: params.maxTokens ?? params.max_tokens,
   });
 
   return {
-    id: `bedrock-${crypto.randomUUID()}`,
+    id: `${response.provider}-${crypto.randomUUID()}`,
     created: Math.floor(Date.now() / 1000),
     model: response.modelId,
     choices: [{

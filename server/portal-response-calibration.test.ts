@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invokeBedrockMock } = vi.hoisted(() => ({ invokeBedrockMock: vi.fn() }));
+const { invokeLocalMock } = vi.hoisted(() => ({ invokeLocalMock: vi.fn() }));
 
-vi.mock("./bedrock-gateway", () => ({
-  isBedrockConfigured: () => true,
-  invokeBedrock: invokeBedrockMock,
+vi.mock("./local-gateway", () => ({
+  invokeLocal: invokeLocalMock,
 }));
 
 import { generateAdaptiveResponse } from "./portal-adaptive-response";
@@ -28,35 +27,28 @@ const informativeStrategy = {
 
 describe("KEIRA response calibration", () => {
   beforeEach(() => {
-    invokeBedrockMock.mockReset();
-    invokeBedrockMock.mockResolvedValue({ content: "A calibrated answer.", modelId: "test-model" });
+    invokeLocalMock.mockReset();
+    invokeLocalMock.mockResolvedValue({ content: "A calibrated answer.", modelId: "test-model", provider: "local" });
   });
 
-  it("applies the saved response variation to the Bedrock request", async () => {
+  it("applies the saved response variation to the local request", async () => {
     await generateAdaptiveResponse("Explain this clearly.", context as any, informativeStrategy, [], 37);
-
-    const request = invokeBedrockMock.mock.calls[0][0];
+    const request = invokeLocalMock.mock.calls[0][0];
     expect(request.temperature).toBe(0.37);
     expect(request.topP).toBeCloseTo(0.874, 8);
   });
 
   it("uses a bounded default when no saved response variation is present", async () => {
     await generateAdaptiveResponse("Explain this clearly.", context as any, informativeStrategy, []);
-
-    const request = invokeBedrockMock.mock.calls[0][0];
+    const request = invokeLocalMock.mock.calls[0][0];
     expect(request.temperature).toBe(0.1);
     expect(request.topP).toBeCloseTo(0.82, 8);
   });
 
-  it("applies the saved response objective and quality boundaries to the live Bedrock system contract", async () => {
-    const planContext = {
-      ...context,
-      profile: { predictiveSensitivity: 75, responseObjective: "plan" },
-    };
-
+  it("applies the saved response objective and quality boundaries to the local system contract", async () => {
+    const planContext = { ...context, profile: { predictiveSensitivity: 75, responseObjective: "plan" } };
     const response = await generateAdaptiveResponse("Plan the release.", planContext as any, informativeStrategy, []);
-
-    const request = invokeBedrockMock.mock.calls[0][0];
+    const request = invokeLocalMock.mock.calls[0][0];
     expect(request.system).toContain("OPERATOR-SELECTED RESPONSE OBJECTIVE: PLAN");
     expect(request.system).toContain("executable sequence");
     expect(request.system).toContain("Never invent citations");

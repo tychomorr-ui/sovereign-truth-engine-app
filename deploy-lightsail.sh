@@ -14,9 +14,6 @@ required_environment_variables=(
   DATABASE_URL
   JWT_SECRET
   PORTAL_OWNER_ACCESS_TOKEN
-  BEDROCK_API_KEY
-  BEDROCK_REGION
-  BEDROCK_MODEL_ID
   PORTAL_S3_BUCKET
   PORTAL_S3_REGION
 )
@@ -29,13 +26,13 @@ PORT=3210
 DATABASE_URL=mysql://portal_user:replace-with-password@replace-with-rds-endpoint:3306/portal_db
 JWT_SECRET=replace-with-a-long-random-secret
 PORTAL_OWNER_ACCESS_TOKEN=replace-with-a-long-random-owner-token
-BEDROCK_API_KEY=replace-with-bedrock-bearer-token
-BEDROCK_REGION=sa-east-1
-BEDROCK_MODEL_ID=anthropic.claude-opus-5
-BEDROCK_MAX_TOKENS=4096
-BEDROCK_TEMPERATURE=0.1
-BEDROCK_TOP_P=0.9
-BEDROCK_TIMEOUT_MS=60000
+LOCAL_LLM_BASE_URL=
+LOCAL_LLM_MODEL=
+LOCAL_LLM_API_KEY=
+LOCAL_LLM_MAX_TOKENS=4096
+LOCAL_LLM_TEMPERATURE=0.1
+LOCAL_LLM_TOP_P=0.9
+LOCAL_LLM_TIMEOUT_MS=60000
 PORTAL_S3_BUCKET=replace-with-an-s3-bucket-name
 PORTAL_S3_REGION=sa-east-1
 ENVIRONMENT
