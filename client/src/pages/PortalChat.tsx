@@ -82,6 +82,31 @@ type MessageMetadata = {
   carryoverMessages?: number;
   qualityContract?: string;
   cmap?: CmapState;
+  receipt?: { receipt_id: string; intelligence_mode: string; provider: string | null; model: string | null; external_service_used: boolean; data_left_local_node: boolean; result_state: string };
+};
+
+type RuntimeStatus = {
+  status: {
+    deterministic: string;
+    localModel: string;
+    localModelName: string | null;
+    localRuntime: string | null;
+    localMemory: string;
+    localTools: string;
+    trustedMesh: string;
+    externalProviders: string;
+    network: string;
+    provenance: string;
+    offlineMode: string;
+  };
+  discovery: {
+    state: string;
+    runtime: string | null;
+    model: string | null;
+    models: string[];
+    inferenceReady: boolean;
+    error: string | null;
+  };
 };
 
 type ContextLedgerEntry = {
@@ -209,6 +234,9 @@ export default function PortalChat() {
   });
   const capabilitiesQuery = trpc.portal.chat.getCapabilities.useQuery(undefined, {
     enabled: isAuthenticated,
+  });
+  const runtimeStatusQuery = trpc.portal.chat.getRuntimeStatus.useQuery(undefined, {
+    enabled: isAuthenticated && showCapabilityPanel,
   });
   const contextLedgerQuery = trpc.portal.chat.getContextLedger.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -934,8 +962,23 @@ export default function PortalChat() {
 
             {showCapabilityPanel && (
               <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="KEIRA capability status">
-                <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><Layers3 className="h-4 w-4" /> Available capabilities</div><button type="button" onClick={() => setShowCapabilityPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close capability status"><X className="h-4 w-4" /></button></div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">{capabilitiesQuery.data?.map((capability) => <div key={capability.id} className="border border-[#273865] bg-[#0d1630] p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm text-[#f3eadb]">{capability.label}</span><span className={`text-[0.58rem] uppercase tracking-[0.16em] ${capability.status === "available" ? "text-[#8be9ff]" : "text-[#d7c7ff]"}`}>{capability.status.replace("-", " ")}</span></div><p className="mt-2 text-xs leading-6 text-[#a6aec0]">{capability.detail}</p></div>) || <p className="text-sm text-[#737b8f]">Loading verified capability status…</p>}</div>
+                <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><Layers3 className="h-4 w-4" /> Sovereign runtime state</div><button type="button" onClick={() => setShowCapabilityPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close capability status"><X className="h-4 w-4" /></button></div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {runtimeStatusQuery.data ? Object.entries({
+                    "DETERMINISTIC ENGINE": runtimeStatusQuery.data.status.deterministic,
+                    "LOCAL MODEL": runtimeStatusQuery.data.discovery.state,
+                    "MODEL RUNTIME": runtimeStatusQuery.data.status.localRuntime || "NOT CONFIGURED",
+                    MEMORY: runtimeStatusQuery.data.status.localMemory,
+                    REFLECTION: "READY",
+                    RECURSION: "BOUNDED",
+                    ADAPTATION: "CONTROLLED",
+                    NETWORK: runtimeStatusQuery.data.status.network,
+                    "EXTERNAL PROVIDERS": runtimeStatusQuery.data.status.externalProviders,
+                    "OFFLINE MODE": runtimeStatusQuery.data.status.offlineMode,
+                  }).map(([label, value]) => <div key={label} className="border border-[#273865] bg-[#0d1630] p-3"><div className="text-[0.58rem] uppercase tracking-[0.16em] text-[#737b8f]">{label}</div><div className="mt-2 text-sm uppercase tracking-[0.08em] text-[#8be9ff]">{String(value).replaceAll("_", " ")}</div></div>) : <p className="text-sm text-[#737b8f]">Loading factual runtime state…</p>}
+                </div>
+                {runtimeStatusQuery.data && <div className="mt-4 border border-[#273865] bg-[#0d1630] p-3 text-xs leading-6 text-[#a6aec0]">Model: {runtimeStatusQuery.data.discovery.model || "not configured"} · Runtime: {runtimeStatusQuery.data.discovery.runtime || "not configured"} · Inference: {runtimeStatusQuery.data.discovery.inferenceReady ? "ready" : "not ready"}{runtimeStatusQuery.data.discovery.error ? ` · ${runtimeStatusQuery.data.discovery.error}` : ""}</div>}
+                <div className="mt-5 grid gap-3 md:grid-cols-2">{capabilitiesQuery.data?.map((capability) => <div key={capability.id} className="border border-[#273865] bg-[#0d1630] p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm text-[#f3eadb]">{capability.label}</span><span className={`text-[0.58rem] uppercase tracking-[0.16em] ${capability.status === "available" ? "text-[#8be9ff]" : "text-[#d7c7ff]"}`}>{capability.status.replace("-", " ")}</span></div><p className="mt-2 text-xs leading-6 text-[#a6aec0]">{capability.detail}</p></div>) || <p className="text-sm text-[#737b8f]">Loading verified capability status…</p>}</div>
               </section>
             )}
 

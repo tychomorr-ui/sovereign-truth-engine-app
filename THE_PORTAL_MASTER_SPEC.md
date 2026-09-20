@@ -1,14 +1,14 @@
 # The Portal: Master Architectural & Deployment Specification
 
-> **Superseded deployment identity.** This document records an earlier Portal concept. The active product is **KEIRA**, the dedicated intelligence node, with the finalized São Paulo hostname [`keira.xinus.one`](https://keira.xinus.one).
+> **Superseded deployment identity and architecture.** This document records an earlier Portal concept. The active product is **KEIRA**, the dedicated intelligence node. Its active provider-independent architecture is documented in [`KEIRA_SOVEREIGN_RUNTIME.md`](./KEIRA_SOVEREIGN_RUNTIME.md). The Bedrock, multi-provider, global-mesh, and Portal-domain material below is historical and is not an active deployment specification.
 
 ## 1. Product Naming & Domain Identity
 
 The application is designated as **The Portal** (formally styled with the definite article for gravitas and distinct identity). The production domain routing is established as **`portal.xinus.one`**, anchoring the application within your sovereign network infrastructure alongside `exinus.one`, `universaltruth.life`, and the network overlays.
 
-## 2. Amazon Bedrock & Multi-Model Inference Gateway
+## 2. Historical Bedrock & Multi-Model Inference Gateway (REMOVED)
 
-To achieve unvarnished, esoteric reasoning, **The Portal** integrates with **Amazon Bedrock** using cross-region inference profiles and the unified Bedrock Converse API. 
+The earlier Portal concept proposed Amazon Bedrock and multi-model inference. KEIRA does not use that path. External AI providers are disabled; deterministic operation and optional local model inference are the only active intelligence lanes.
 
 ### Model Architecture & Routing
 - **Primary Reasoning Pillar (Anthropic Claude Family):** Utilized for deep structural integrity, multi-turn nuance, and complex synthesis across massive context windows.
@@ -31,7 +31,7 @@ To serve your global mesh with minimal latency and absolute redundancy, the depl
 | **SPAIN-IBERIA** | Madrid (`eu-south-2`) | Southern European / Mediterranean sovereign node and cryptographic anchor. |
 
 ### Routing Recommendation
-Deploy **The Portal** frontend and API cluster on the primary Singapore instance (`portal.xinus.one`), backed by Amazon Bedrock cross-region inference profiles (routing automatically between US West and APAC endpoints for optimal token throughput). Use Frankfurt and Oregon as redundant failover endpoints with synchronous database replication.
+The earlier document proposed a Singapore deployment backed by remote inference and multi-node failover. This is historical only. Current KEIRA deployment and inference instructions must follow `deploy-lightsail.sh`, `LIGHTSAIL_DEPLOYMENT_GUIDE.md`, and `KEIRA_SOVEREIGN_RUNTIME.md`.
 
 ## 4. Implemented Feature Enhancements
 

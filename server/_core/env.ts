@@ -7,6 +7,7 @@ export const ENV = {
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   awsSessionToken: process.env.AWS_SESSION_TOKEN ?? "",
   localLlmBaseUrl: process.env.LOCAL_LLM_BASE_URL ?? "",
+  localLlmRuntime: process.env.LOCAL_LLM_RUNTIME ?? "",
   localLlmModel: process.env.LOCAL_LLM_MODEL ?? "",
   localLlmApiKey: process.env.LOCAL_LLM_API_KEY ?? "",
   localLlmMaxTokens: Number(process.env.LOCAL_LLM_MAX_TOKENS ?? 4096),

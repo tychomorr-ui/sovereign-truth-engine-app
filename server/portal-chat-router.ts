@@ -22,6 +22,7 @@ import {
 } from "./cmap-portal-integration";
 import { updateMissionState, type MissionState } from "./cmap-handshake";
 import { getKeiraCapabilities } from "./keira-capabilities";
+import { getRuntimeReport } from "./runtime-discovery";
 import {
   getCarryoverMessageLimit,
   resolveContextCarryover,
@@ -32,6 +33,8 @@ const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
 export const portalChatRouter = router({
   getCapabilities: protectedProcedure.query(() => getKeiraCapabilities()),
+
+  getRuntimeStatus: protectedProcedure.query(async () => getRuntimeReport()),
 
   getContextLedger: protectedProcedure.query(async ({ ctx }) => {
     return await portalChat.getContextEntries(ctx.user.id);
@@ -227,6 +230,7 @@ export const portalChatRouter = router({
           contextCarryover: carryoverPolicy,
           carryoverMessages: adaptiveResponse.metadata.carryoverMessageCount,
           qualityContract: adaptiveResponse.metadata.qualityContract,
+          receipt: adaptiveResponse.metadata.receipt,
           latencyMs,
           cmap: {
             sessionId: missionState.sessionId,

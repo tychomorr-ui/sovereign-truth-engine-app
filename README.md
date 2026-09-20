@@ -24,6 +24,31 @@ KEIRA retains a coherent conversation history, adapts its response framing to th
 
 The application uses the existing internal `portal.chat.*` tRPC namespace for backward-compatible API contracts. That internal namespace is not the public product name and does not change the KEIRA interface or deployment identity.
 
+## Sovereign Runtime Contract
+
+KEIRA is the intelligence system; a Llama-family model or other local model is only an interchangeable inference capability. The canonical local path is:
+
+`NEXINUS → KEIRA → APEX CANONICAL → SOVEREIGN INTELLIGENCE BUS → deterministic engine / local model runtime / local tools / reflection / memory / provenance`
+
+The capability resolver explicitly represents deterministic, local-model, local-tool, trusted-mesh, and external-provider lanes. The current release enables deterministic operation, enables local-model operation only when configured, reserves trusted mesh, and disables external providers. It never silently falls through to a remote provider.
+
+Every intelligence operation returns a receipt containing the operation, mode, provider, model, context sources, locality, policy, verification, and result state. The Interface panel reports factual states such as `MODEL_READY`, `MODEL_NOT_CONFIGURED`, `MODEL_UNAVAILABLE`, `DETERMINISTIC READY`, `EXTERNAL PROVIDERS DISABLED`, and `OFFLINE MODE AVAILABLE`.
+
+The deterministic lane provides normalization, lexical classification, contradiction detection, bounded planning, policy evaluation, state comparison, and consistency-oriented primitives without model inference. Reflection is separate from generation and uses a hard recursion limit. Sovereign memory is explicit and locally controlled, with authority, sensitivity, retention, provenance, and revocation metadata.
+
+### Local model configuration
+
+The local gateway speaks the common OpenAI-compatible `/v1/chat/completions` and `/v1/models` shapes. This permits Ollama, llama.cpp server, vLLM, or another local-compatible runtime without changing KEIRA's memory, identity, policy, orchestration, or API contracts:
+
+```bash
+LOCAL_LLM_RUNTIME=ollama
+LOCAL_LLM_BASE_URL=http://127.0.0.1:11434/v1
+LOCAL_LLM_MODEL=your-installed-model
+LOCAL_LLM_API_KEY=
+```
+
+Leave `LOCAL_LLM_BASE_URL` and `LOCAL_LLM_MODEL` empty for deterministic offline mode. No external AI provider is required.
+
 ## Local Development
 
 Install Node.js 22 and pnpm, then install the committed dependency graph and start the development server.

@@ -27,6 +27,7 @@ DATABASE_URL=mysql://portal_user:replace-with-password@replace-with-rds-endpoint
 JWT_SECRET=replace-with-a-long-random-secret
 PORTAL_OWNER_ACCESS_TOKEN=replace-with-a-long-random-owner-token
 LOCAL_LLM_BASE_URL=
+LOCAL_LLM_RUNTIME=
 LOCAL_LLM_MODEL=
 LOCAL_LLM_API_KEY=
 LOCAL_LLM_MAX_TOKENS=4096

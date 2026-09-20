@@ -2,13 +2,15 @@
 
 **Audit date:** August 15, 2026  
 **Audited revision:** `2af0355` — `compound KEIRA response controls and local recall`  
-**Scope:** The active KEIRA source and build path, including authenticated tRPC procedures, first-party auth, Bedrock and S3 gateways, profile-backed response controls, local dialogue recall, runtime headers, deployment helper, production dependency audit, and the São Paulo self-hosting runbook.
+**Scope:** Historical Release II audit of the KEIRA source and build path, including authenticated tRPC procedures, first-party auth, the former Bedrock and S3 gateways, profile-backed response controls, local dialogue recall, runtime headers, deployment helper, production dependency audit, and the São Paulo self-hosting runbook.
+
+> **Superseded inference architecture.** Bedrock references in this historical roadmap describe the former implementation. The active provider-independent design is documented in [`KEIRA_SOVEREIGN_RUNTIME.md`](./KEIRA_SOVEREIGN_RUNTIME.md); external AI providers are disabled.
 
 > **Decision:** KEIRA’s active product behavior is coherent and materially stronger after Release II. The supply-chain remediation was completed and a fresh production audit now returns **“No known vulnerabilities found.”** The source release now includes exact loopback binding, Nginx authentication rate limits, a browser content-security policy, and HSTS guidance. Public activation remains conditional only on operator-controlled AWS tasks: applying the reviewed configuration on Lightsail, enabling TLS after DNS, and validating the firewall.
 
 ## Executive assessment
 
-KEIRA is now a **conversation-first Bedrock intelligence node** with explicit, operator-controlled behavior rather than hidden or decorative model settings. Release II materially improved the contract between the operator, stored dialogue, and model inference. The selected response objective changes the real Bedrock system instruction; the carryover policy limits the exact number of prior messages supplied to the next turn; and recall searches only the authenticated operator’s own saved dialogue before any deliberate promotion to the operator-owned ledger.
+KEIRA was a **conversation-first Bedrock intelligence node** in Release II. It is now a provider-independent local intelligence runtime with explicit, operator-controlled behavior. The selected response objective, carryover policy, and authenticated local recall remain part of the application contract; the active inference path is deterministic or local-model only.
 
 The active runtime is narrow by design. Only `auth.*` and `portal.chat.*` are mounted. The source verification confirms that legacy Forge-backed orchestration, platform OAuth, payment routes, mirror routes, and other legacy surface areas are not mounted into the active API router. Direct Bedrock and S3 calls remain server-side. This is the correct sovereignty boundary, but it does not remove the need to maintain the open-source dependency tree.
 
@@ -18,7 +20,7 @@ The active runtime is narrow by design. Only `auth.*` and `portal.chat.*` are mo
 | Authentication | Scrypt password hashes, timing-safe owner-token comparison, signed HTTP-only cookies, HTTPS-aware `Secure` flag | **Pass with hardening gap** | Add rate limits and reduce/revalidate the one-year session lifetime. |
 | Authorization | Conversation, recall, and ledger access are scoped to authenticated `userId`; recall promotion rechecks ownership | **Pass** | Preserve ownership tests as new endpoints are added. |
 | Input boundaries | Zod validates procedure input; Express limits JSON and URL-encoded bodies to 1 MB | **Pass** | Add per-route abuse controls at Nginx or application edge. |
-| Inference integrity | Bedrock is the only active model path; response objective and calibration reach the live request | **Pass** | Keep research and realtime voice marked unavailable until configured. |
+| Inference integrity | Deterministic lane is always active; local model is optional; external providers are disabled | **Pass** | Keep research and realtime voice marked unavailable until configured. |
 | Stored context | Active ledger is inspectable, pausable, deleteable; recall requires explicit operator promotion | **Pass** | Add retention/export/delete policy before multi-user public launch. |
 | Browser rendering | Markdown is rendered with `streamdown`; no direct application use of `dangerouslySetInnerHTML` was found outside a generic chart component | **Conditional** | Update the transitive Markdown/diagram sanitizer chain before public launch. |
 | Web edge | `X-Content-Type-Options`, frame denial, referrer policy, permissions policy, COOP, and CSP are set; the deployment helper adds Nginx authentication rate limits and HSTS guidance | **Pass in source** | Validate the rendered Nginx/TLS configuration and Lightsail firewall during deployment. |

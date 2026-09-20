@@ -5,7 +5,7 @@
  * strategy-specific approaches, and learning memory updates.
  */
 
-import { invokeLocal } from "./local-gateway";
+import { routeLocalConversation } from "./sovereign-bus";
 import type { UserContext } from "./portal-context-retrieval";
 import { formatContextForLLM } from "./portal-context-retrieval";
 import type { StrategySelection, DialogueStrategy } from "./portal-strategy-selector";
@@ -29,6 +29,7 @@ export interface AdaptiveResponse {
     responseObjective: ResponseObjective;
     carryoverMessageCount: number;
     qualityContract: string;
+    receipt: ReturnType<typeof routeLocalConversation> extends Promise<infer T> ? T extends { receipt: infer R } ? R : never : never;
     learningMemoryUpdates: {
       corePatterns?: string[];
       growthAreas?: string[];
@@ -57,16 +58,20 @@ export async function generateAdaptiveResponse(
     const messages = buildMessageHistory(userMessage, recentMessages, context, strategy);
 
     const normalizedVariation = Math.max(0, Math.min(1, Number.isFinite(responseVariation) ? Number(responseVariation) / 100 : 0.1));
-    const localResponse = await invokeLocal({
+    const localResult = await routeLocalConversation({
       system: systemPrompt,
       messages,
+      requested: "local_model",
+      operation: "portal.conversation.generate",
+      contextSources: ["conversation-history", "operator-context-ledger", "learning-profile"],
       maxTokens: 4096,
       temperature: normalizedVariation,
       topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
     });
-    const portalResponse = localResponse.content;
-    const provider = localResponse.provider;
-    const modelId = localResponse.modelId;
+    if (!localResult.value) throw new Error(localResult.reason ?? "No local capability available.");
+    const portalResponse = localResult.value.content;
+    const provider = localResult.value.provider === "local" ? "local" : "deterministic";
+    const modelId = localResult.value.modelId;
 
     // Extract learning updates from response
     const learningUpdates = extractLearningUpdates(portalResponse, context);
@@ -83,6 +88,7 @@ export async function generateAdaptiveResponse(
         responseObjective: resolveResponseObjective((context as any).profile?.responseObjective),
         carryoverMessageCount: recentMessages.length,
         qualityContract: "Answer quality contract active: answer scope, uncertainty boundaries, and any source limitations are explicit.",
+        receipt: localResult.receipt,
         patternsActivated: context.learning.corePatterns.slice(0, 3),
         breakthroughIndicators: extractBreakthroughIndicators(portalResponse),
         nextSuggestedAction,
