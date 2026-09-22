@@ -28,6 +28,7 @@ import {
   resolveContextCarryover,
   resolveResponseObjective,
 } from "./keira-response-controls";
+import { getConfiguredLocalModelProvider } from "./local-model";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
@@ -35,6 +36,10 @@ export const portalChatRouter = router({
   getCapabilities: protectedProcedure.query(() => getKeiraCapabilities()),
 
   getRuntimeStatus: protectedProcedure.query(async () => getRuntimeReport()),
+
+  getLocalModelStatus: protectedProcedure.query(async () => {
+    return await getConfiguredLocalModelProvider().modelInfo();
+  }),
 
   getContextLedger: protectedProcedure.query(async ({ ctx }) => {
     return await portalChat.getContextEntries(ctx.user.id);

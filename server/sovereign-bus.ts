@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { deterministicResponse, invokeLocal, isLocalModelConfigured, type LocalChatMessage } from "./local-gateway";
 import { ENV } from "./_core/env";
+import type { ContextBoundary } from "./local-model";
 
 export type IntelligenceMode = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external";
 export type CapabilityId = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external_provider";
@@ -98,7 +99,8 @@ export async function routeLocalConversation(input: {
   requested?: CapabilityId;
   maxTokens?: number;
   temperature?: number;
-  topP?: number;
+    topP?: number;
+    contextBoundary?: ContextBoundary;
 }): Promise<IntelligenceResult<{ content: string; modelId: string; provider: string }>> {
   const operation = input.operation ?? "conversation.generate";
   const contextSources = input.contextSources ?? [];
@@ -130,7 +132,7 @@ export async function routeLocalConversation(input: {
         status: "ok",
         value: { content: response.content, modelId: response.modelId, provider: response.provider },
         external_fallback: false,
-        receipt: createReceipt({ operation, intelligence_mode: response.provider === "local" ? "local_model" : "deterministic", provider: response.provider, model: response.modelId, context_sources: contextSources, policy: "local model allowed; external providers disabled", verification: response.provider === "local" ? "local model response received" : "deterministic fallback completed", result_state: response.provider === "local" ? "PROVEN" : "PARTIALLY_PROVEN" }),
+        receipt: createReceipt({ operation, intelligence_mode: response.provider === "local" ? "local_model" : "deterministic", provider: response.provider, model: response.modelId, context_sources: contextSources, policy: "local model allowed; external providers disabled", verification: response.provider === "local" ? "local model generated inference; KEIRA verification required" : "deterministic fallback completed", result_state: response.provider === "local" ? "GENERATED_INFERENCE" : "PARTIALLY_PROVEN" }),
       };
     } catch (error) {
       const fallback = deterministicResponse(input);

@@ -1,4 +1,5 @@
 import { ENV } from "./_core/env";
+import { getConfiguredLocalModelProvider, type ContextBoundary } from "./local-model";
 
 export type LocalRole = "user" | "assistant";
 
@@ -13,6 +14,7 @@ export type LocalGatewayRequest = {
   maxTokens?: number;
   temperature?: number;
   topP?: number;
+  contextBoundary?: ContextBoundary;
 };
 
 export type LocalGatewayResponse = {
@@ -148,7 +150,14 @@ async function invokeOpenAiCompatible(request: LocalGatewayRequest): Promise<Loc
 
 export async function invokeLocal(request: LocalGatewayRequest): Promise<LocalGatewayResponse> {
   if (!isLocalModelConfigured()) return deterministicResponse(request);
-  return invokeOpenAiCompatible(request);
+  const response = await getConfiguredLocalModelProvider().generate(request);
+  return {
+    content: response.content,
+    modelId: response.modelId,
+    stopReason: response.stopReason,
+    provider: "local",
+    usage: response.usage,
+  };
 }
 
 export function resetLocalGatewayForTests(): void {
