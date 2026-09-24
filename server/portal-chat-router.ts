@@ -29,6 +29,7 @@ import {
   resolveResponseObjective,
 } from "./keira-response-controls";
 import { getConfiguredLocalModelProvider } from "./local-model";
+import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt } from "./keira-durable-memory";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
@@ -40,6 +41,30 @@ export const portalChatRouter = router({
   getLocalModelStatus: protectedProcedure.query(async () => {
     return await getConfiguredLocalModelProvider().modelInfo();
   }),
+
+  getDurableMemory: protectedProcedure
+    .input(z.object({ memoryClass: z.string().trim().min(1).max(64).optional() }))
+    .query(async ({ ctx, input }) => readDurableMemory(ctx.user.id, input.memoryClass as any)),
+
+  writeDurableMemory: protectedProcedure
+    .input(z.object({
+      class: z.enum(["SHORT_TERM_CONTEXT", "SESSION_MEMORY", "LONG_TERM_MEMORY", "USER_AUTHORIZED_MEMORY", "SYSTEM_STATE", "EVIDENCE_MEMORY"]),
+      content: z.string().trim().min(1).max(12000),
+      source: z.string().trim().min(1).max(255),
+      authority: z.enum(["operator", "system", "derived"]),
+      sensitivity: z.enum(["public", "private", "restricted"]),
+      retention: z.enum(["turn", "session", "until_revoked", "system"]),
+      provenance: z.string().trim().min(1).max(4000),
+    }))
+    .mutation(async ({ ctx, input }) => persistMemory({ ...input, userId: ctx.user.id })),
+
+  revokeDurableMemory: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => revokeDurableMemory(ctx.user.id, input.id)),
+
+  getDurableReceipts: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
+    .query(async ({ ctx, input }) => readReceipts(ctx.user.id, input.limit)),
 
   getContextLedger: protectedProcedure.query(async ({ ctx }) => {
     return await portalChat.getContextEntries(ctx.user.id);
@@ -195,6 +220,8 @@ export const portalChatRouter = router({
         userRecord[0].modelTemperature,
       );
       const latencyMs = Date.now() - startTime;
+
+      await persistReceipt(ctx.user.id, adaptiveResponse.metadata.receipt);
 
       // Add Portal response
       await portalChat.addMessage(
