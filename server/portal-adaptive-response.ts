@@ -17,6 +17,7 @@ import {
   type ResponseObjective,
 } from "./keira-response-controls";
 import { assembleMinimumContext, createMemoryObject, type ContextAssembly } from "./memory-fabric";
+import { runBoundedReflection, type BoundedReflectionResult } from "./reflection-engine";
 
 export interface AdaptiveResponse {
   strategy: DialogueStrategy;
@@ -31,6 +32,7 @@ export interface AdaptiveResponse {
     carryoverMessageCount: number;
     qualityContract: string;
     memoryContextIds: string[];
+    reflection: Pick<BoundedReflectionResult, "decision" | "terminationReason" | "iterations" | "operations" | "records">;
     receipt: ReturnType<typeof routeLocalConversation> extends Promise<infer T> ? T extends { receipt: infer R } ? R : never : never;
     learningMemoryUpdates: {
       corePatterns?: string[];
@@ -94,7 +96,14 @@ export async function generateAdaptiveResponse(
       topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
     });
     if (!localResult.value) throw new Error(localResult.reason ?? "No local capability available.");
-    const portalResponse = localResult.value.content;
+    const reflection = runBoundedReflection({
+      request: userMessage,
+      initialOutput: localResult.value.content,
+      evidence: memoryAssembly.included.map((memory) => `${memory.subject ?? "memory"}: ${memory.content}`),
+      level: 2,
+      limits: { maxReflectionDepth: 2, maxRecursionDepth: 2, maxOperations: 8, maxTimeMs: 500, maxTokens: 4096 },
+    });
+    const portalResponse = reflection.decision === "ACCEPT" ? reflection.finalOutput : localResult.value.content;
     const provider = localResult.value.provider === "local" ? "local" : "deterministic";
     const modelId = localResult.value.modelId;
 
@@ -114,6 +123,7 @@ export async function generateAdaptiveResponse(
         carryoverMessageCount: recentMessages.length,
         qualityContract: "Answer quality contract active: answer scope, uncertainty boundaries, and any source limitations are explicit.",
         memoryContextIds: memoryAssembly.suppliedMemoryIds,
+        reflection: { decision: reflection.decision, terminationReason: reflection.terminationReason, iterations: reflection.iterations, operations: reflection.operations, records: reflection.records },
         receipt: localResult.receipt,
         patternsActivated: context.learning.corePatterns.slice(0, 3),
         breakthroughIndicators: extractBreakthroughIndicators(portalResponse),
