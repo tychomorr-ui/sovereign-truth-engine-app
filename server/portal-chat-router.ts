@@ -29,7 +29,7 @@ import {
   resolveResponseObjective,
 } from "./keira-response-controls";
 import { getConfiguredLocalModelProvider } from "./local-model";
-import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt } from "./keira-durable-memory";
+import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt, searchDurableMemory, updateDurableMemory } from "./keira-durable-memory";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
@@ -46,6 +46,10 @@ export const portalChatRouter = router({
     .input(z.object({ memoryClass: z.string().trim().min(1).max(64).optional() }))
     .query(async ({ ctx, input }) => readDurableMemory(ctx.user.id, input.memoryClass as any)),
 
+  searchDurableMemory: protectedProcedure
+    .input(z.object({ subject: z.string().trim().min(1).max(255).optional(), memoryClass: z.string().trim().min(1).max(64).optional(), provenanceType: z.string().trim().min(1).max(32).optional(), informationState: z.string().trim().min(1).max(32).optional(), scope: z.string().trim().min(1).max(64).optional(), limit: z.number().int().min(1).max(200).default(50) }))
+    .query(async ({ ctx, input }) => searchDurableMemory(ctx.user.id, input)),
+
   writeDurableMemory: protectedProcedure
     .input(z.object({
       class: z.enum(["SHORT_TERM_CONTEXT", "SESSION_MEMORY", "LONG_TERM_MEMORY", "USER_AUTHORIZED_MEMORY", "SYSTEM_STATE", "EVIDENCE_MEMORY"]),
@@ -61,6 +65,13 @@ export const portalChatRouter = router({
   revokeDurableMemory: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => revokeDurableMemory(ctx.user.id, input.id)),
+
+  updateDurableMemory: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), content: z.string().trim().min(1).max(12000).optional(), subject: z.string().trim().max(255).nullable().optional(), informationState: z.string().trim().min(1).max(32).optional(), confidence: z.number().int().min(0).max(100).optional(), visibility: z.string().trim().min(1).max(32).optional(), expirationAt: z.coerce.date().nullable().optional(), relatedReceipts: z.array(z.string().uuid()).max(32).optional(), scope: z.string().trim().min(1).max(64).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...changes } = input;
+      return updateDurableMemory(ctx.user.id, id, changes);
+    }),
 
   getDurableReceipts: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
@@ -262,6 +273,7 @@ export const portalChatRouter = router({
           contextCarryover: carryoverPolicy,
           carryoverMessages: adaptiveResponse.metadata.carryoverMessageCount,
           qualityContract: adaptiveResponse.metadata.qualityContract,
+          memoryContextIds: adaptiveResponse.metadata.memoryContextIds,
           receipt: adaptiveResponse.metadata.receipt,
           latencyMs,
           cmap: {

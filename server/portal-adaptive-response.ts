@@ -16,6 +16,7 @@ import {
   resolveResponseObjective,
   type ResponseObjective,
 } from "./keira-response-controls";
+import { assembleMinimumContext, createMemoryObject, type ContextAssembly } from "./memory-fabric";
 
 export interface AdaptiveResponse {
   strategy: DialogueStrategy;
@@ -29,6 +30,7 @@ export interface AdaptiveResponse {
     responseObjective: ResponseObjective;
     carryoverMessageCount: number;
     qualityContract: string;
+    memoryContextIds: string[];
     receipt: ReturnType<typeof routeLocalConversation> extends Promise<infer T> ? T extends { receipt: infer R } ? R : never : never;
     learningMemoryUpdates: {
       corePatterns?: string[];
@@ -51,8 +53,31 @@ export async function generateAdaptiveResponse(
   responseVariation?: number,
 ): Promise<AdaptiveResponse> {
   try {
+    const contextLedger = ((context as any).contextLedger ?? []) as Array<{ label: string; content: string; kind: string }>;
+    const memoryAssembly = assembleMinimumContext({
+      intent: userMessage,
+      maxItems: 12,
+      policy: ["operator-scoped context only", "conflicts require review"],
+      memories: contextLedger.map((entry) => createMemoryObject({
+        type: entry.kind === "preference" ? "USER_AUTHORIZED_PREFERENCE" : "DURABLE_MEMORY",
+        content: entry.content,
+        subject: entry.label,
+        source: "operator-context-ledger",
+        provenance: { type: "USER", description: "operator-owned context ledger", related_receipts: [] },
+        information_state: "KNOWN",
+        confidence: 100,
+        authority: "operator",
+        visibility: "private",
+        retention: "until_revoked",
+        expiration: null,
+        related_receipts: [],
+        supersedes: null,
+        superseded_by: null,
+        scope: "operator",
+      })),
+    });
     // Build comprehensive system prompt
-    const systemPrompt = buildSystemPrompt(context, strategy);
+    const systemPrompt = buildSystemPrompt(context, strategy, memoryAssembly);
 
     // Build message history with context injection
     const messages = buildMessageHistory(userMessage, recentMessages, context, strategy);
@@ -63,7 +88,7 @@ export async function generateAdaptiveResponse(
       messages,
       requested: "local_model",
       operation: "portal.conversation.generate",
-      contextSources: ["conversation-history", "operator-context-ledger", "learning-profile"],
+      contextSources: ["conversation-history", "learning-profile", ...memoryAssembly.suppliedMemoryIds.map((id) => `memory:${id}`), ...memoryAssembly.unavailable.map((item) => `unavailable:${item}`)],
       maxTokens: 4096,
       temperature: normalizedVariation,
       topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
@@ -88,6 +113,7 @@ export async function generateAdaptiveResponse(
         responseObjective: resolveResponseObjective((context as any).profile?.responseObjective),
         carryoverMessageCount: recentMessages.length,
         qualityContract: "Answer quality contract active: answer scope, uncertainty boundaries, and any source limitations are explicit.",
+        memoryContextIds: memoryAssembly.suppliedMemoryIds,
         receipt: localResult.receipt,
         patternsActivated: context.learning.corePatterns.slice(0, 3),
         breakthroughIndicators: extractBreakthroughIndicators(portalResponse),
@@ -104,7 +130,7 @@ export async function generateAdaptiveResponse(
 /**
  * Build comprehensive system prompt with context and strategy
  */
-function buildSystemPrompt(context: UserContext, strategy: StrategySelection): string {
+function buildSystemPrompt(context: UserContext, strategy: StrategySelection, memoryAssembly?: ContextAssembly): string {
   const lines: string[] = [];
 
   // Base KEIRA identity with custom persona and instructions support
@@ -112,7 +138,6 @@ function buildSystemPrompt(context: UserContext, strategy: StrategySelection): s
   const customInstructions = (context as any).profile?.customInstructions;
   const predictiveSensitivity = (context as any).profile?.predictiveSensitivity ?? 75;
   const responseObjective = resolveResponseObjective((context as any).profile?.responseObjective);
-  const contextLedger = (context as any).contextLedger as Array<{ label: string; content: string; kind: string }> | undefined;
 
   lines.push(customPersona ? `You are KEIRA. The operator's requested persona is: ${customPersona}` : `You are KEIRA, a sovereign conversational intelligence node.
 
@@ -141,11 +166,9 @@ ANSWER QUALITY BOUNDARIES:
 
   lines.push("");
 
-  if (contextLedger?.length) {
+  if (memoryAssembly?.contextText) {
     lines.push("OPERATOR-OWNED ACTIVE CONTEXT (explicit, fallible, and removable by the operator):");
-    contextLedger.slice(0, 12).forEach((entry) => {
-      lines.push(`- ${entry.kind}: ${entry.label} — ${entry.content}`);
-    });
+    lines.push(memoryAssembly.contextText);
     lines.push("Use this only when relevant to the active request. Do not infer additional facts from it.");
     lines.push("");
   }
