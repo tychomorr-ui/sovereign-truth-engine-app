@@ -1,0 +1,21 @@
+CREATE TABLE `keiraAdaptationRecords` (
+	`adaptationId` varchar(36) NOT NULL,
+	`userId` int NOT NULL,
+	`variable` varchar(64) NOT NULL,
+	`currentState` text NOT NULL,
+	`proposedState` text NOT NULL,
+	`reason` text NOT NULL,
+	`evidence` text NOT NULL,
+	`expectedEffect` text NOT NULL,
+	`risk` varchar(16) NOT NULL,
+	`authority` varchar(32) NOT NULL,
+	`approval` varchar(16) NOT NULL,
+	`mode` varchar(16) NOT NULL,
+	`rollbackState` text NOT NULL,
+	`result` text,
+	`receiptId` varchar(36) NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`activatedAt` timestamp,
+	`rolledBackAt` timestamp,
+	CONSTRAINT `keiraAdaptationRecords_adaptationId` PRIMARY KEY(`adaptationId`)
+);

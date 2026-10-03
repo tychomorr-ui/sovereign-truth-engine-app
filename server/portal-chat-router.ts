@@ -30,6 +30,8 @@ import {
 } from "./keira-response-controls";
 import { getConfiguredLocalModelProvider } from "./local-model";
 import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt, searchDurableMemory, updateDurableMemory } from "./keira-durable-memory";
+import { proposeAdaptation } from "./adaptation-engine";
+import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
@@ -76,6 +78,27 @@ export const portalChatRouter = router({
   getDurableReceipts: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
     .query(async ({ ctx, input }) => readReceipts(ctx.user.id, input.limit)),
+
+  listAdaptations: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
+    .query(async ({ ctx, input }) => listAdaptations(ctx.user.id, input.limit)),
+
+  proposeAdaptation: protectedProcedure
+    .input(z.object({
+      variable: z.enum(["routing_preference", "model_selection", "tool_selection", "context_selection", "retrieval_weighting", "response_strategy", "workflow_ordering", "performance_parameters", "user_approved_preference"]),
+      currentState: z.unknown(),
+      proposedState: z.unknown(),
+      reason: z.string().trim().min(1).max(4000),
+      expectedEffect: z.string().trim().min(1).max(2000),
+      risk: z.enum(["LOW", "MEDIUM", "HIGH"]),
+      contextKey: z.string().trim().min(1).max(255),
+      evidence: z.array(z.object({ type: z.enum(["VERIFIED_OUTCOME", "EXPLICIT_USER_FEEDBACK", "SUCCESSFUL_TASK", "FAILED_TASK", "PERFORMANCE_METRIC", "HUMAN_CORRECTION", "VALIDATED_EVIDENCE"]), value: z.number().min(0).max(1), verified: z.boolean(), receiptId: z.string().uuid().optional(), contextKey: z.string().trim().min(1).max(255), observedAt: z.string().datetime().optional() })).max(100),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = proposeAdaptation(input);
+      await persistAdaptation(ctx.user.id, result.proposal);
+      return result;
+    }),
 
   getContextLedger: protectedProcedure.query(async ({ ctx }) => {
     return await portalChat.getContextEntries(ctx.user.id);

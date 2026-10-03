@@ -116,3 +116,27 @@ export const keiraIntelligenceReceipts = mysqlTable("keiraIntelligenceReceipts",
 });
 export type KeiraIntelligenceReceipt = typeof keiraIntelligenceReceipts.$inferSelect;
 export type InsertKeiraIntelligenceReceipt = typeof keiraIntelligenceReceipts.$inferInsert;
+
+/** Proposal-first adaptive behavior history; protected policy variables are never auto-mutated. */
+export const keiraAdaptationRecords = mysqlTable("keiraAdaptationRecords", {
+  adaptationId: varchar("adaptationId", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull(),
+  variable: varchar("variable", { length: 64 }).notNull(),
+  currentState: text("currentState").notNull(),
+  proposedState: text("proposedState").notNull(),
+  reason: text("reason").notNull(),
+  evidence: text("evidence").notNull(),
+  expectedEffect: text("expectedEffect").notNull(),
+  risk: varchar("risk", { length: 16 }).notNull(),
+  authority: varchar("authority", { length: 32 }).notNull(),
+  approval: varchar("approval", { length: 16 }).notNull(),
+  mode: varchar("mode", { length: 16 }).notNull(),
+  rollbackState: text("rollbackState").notNull(),
+  result: text("result"),
+  receiptId: varchar("receiptId", { length: 36 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  activatedAt: timestamp("activatedAt"),
+  rolledBackAt: timestamp("rolledBackAt"),
+});
+export type KeiraAdaptationRecord = typeof keiraAdaptationRecords.$inferSelect;
+export type InsertKeiraAdaptationRecord = typeof keiraAdaptationRecords.$inferInsert;
