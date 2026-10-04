@@ -50,6 +50,9 @@ export function evaluateShadow(proposal: AdaptationProposal, observedEffect: { s
 }
 
 export function activateAdaptation(proposal: AdaptationProposal, authorization: { approved: boolean; actor: "operator" | "system"; reason: string }): { proposal: AdaptationProposal; receipt: IntelligenceReceipt } {
+  const verifiedSuccesses = proposal.evidence.filter((signal) => signal.verified && signal.type !== "FAILED_TASK" && signal.value >= 0.5).length;
+  const failures = proposal.evidence.filter((signal) => signal.type === "FAILED_TASK" || signal.value < 0.5).length;
+  if (proposal.mode !== "SHADOW" || proposal.approval !== "PENDING" || verifiedSuccesses < DEFAULT_LIMITS.minSamples || verifiedSuccesses <= failures) return { proposal: { ...proposal, approval: "DENIED", mode: "REJECTED", result: "activation denied: proposal is not evidence-eligible" }, receipt: makeReceipt("adaptation.activate.denied", "INSUFFICIENT_EVIDENCE", [proposal.receipt_id]) };
   if (!authorization.approved || authorization.actor !== "operator") return { proposal: { ...proposal, approval: "DENIED", mode: "REJECTED", result: "activation denied: explicit operator authorization required" }, receipt: makeReceipt("adaptation.activate.denied", "AUTHORIZATION_REQUIRED", [proposal.receipt_id]) };
   if (proposal.risk === "HIGH") return { proposal: { ...proposal, approval: "DENIED", mode: "REJECTED", result: "activation denied: high-risk adaptation requires separate policy authorization" }, receipt: makeReceipt("adaptation.activate.denied", "POLICY_PROTECTED", [proposal.receipt_id]) };
   const activated = { ...proposal, approval: "AUTHORIZED" as const, mode: "ACTIVE" as const, activated_at: new Date().toISOString(), result: authorization.reason };

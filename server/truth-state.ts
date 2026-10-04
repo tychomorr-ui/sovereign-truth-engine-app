@@ -24,6 +24,8 @@ export type TruthTransition = { allowed: boolean; from: TruthState; to: TruthSta
 
 export function canTransition(from: TruthState, to: TruthState): TruthTransition {
   if (from === to) return { allowed: true, from, to, reason: "state unchanged" };
+  if (!Object.prototype.hasOwnProperty.call(transitions, from)) return { allowed: false, from, to, reason: `unknown source truth state: ${String(from)}` };
+  if (!TRUTH_STATES.includes(to)) return { allowed: false, from, to, reason: `unknown target truth state: ${String(to)}` };
   const allowed = transitions[from].includes(to);
   return { allowed, from, to, reason: allowed ? "defined transition" : `transition ${from} → ${to} is not defined` };
 }

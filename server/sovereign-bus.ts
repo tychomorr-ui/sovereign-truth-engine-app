@@ -54,6 +54,28 @@ export function createReceipt(input: Omit<IntelligenceReceipt, "receipt_id" | "t
   };
 }
 
+export function validateReceipt(receipt: Partial<IntelligenceReceipt>): { valid: boolean; reason: string } {
+  const required = ["receipt_id", "timestamp", "operation", "intelligence_mode", "policy", "verification", "result_state"] as const;
+  const missing = required.filter((field) => !receipt[field]);
+  if (missing.length) return { valid: false, reason: `missing receipt fields: ${missing.join(", ")}` };
+  if (!Array.isArray(receipt.context_sources)) return { valid: false, reason: "context_sources must be an array" };
+  if (!receipt.receipt_id || !/^[0-9a-f-]{36}$/i.test(receipt.receipt_id)) return { valid: false, reason: "receipt_id is not a UUID" };
+  return { valid: true, reason: "receipt contract complete" };
+}
+
+export class ReceiptIntegrityLedger {
+  private readonly entries = new Map<string, IntelligenceReceipt>();
+  append(receipt: IntelligenceReceipt): IntelligenceReceipt {
+    const validation = validateReceipt(receipt);
+    if (!validation.valid) throw new Error(validation.reason);
+    if (this.entries.has(receipt.receipt_id)) throw new Error(`duplicate receipt ID: ${receipt.receipt_id}`);
+    this.entries.set(receipt.receipt_id, Object.freeze({ ...receipt }));
+    return this.entries.get(receipt.receipt_id)!;
+  }
+  get(receiptId: string): IntelligenceReceipt | undefined { return this.entries.get(receiptId); }
+  list(): IntelligenceReceipt[] { return Array.from(this.entries.values()).map((entry) => ({ ...entry })); }
+}
+
 export function resolveCapabilities(): Record<CapabilityId, CapabilityState> {
   return {
     deterministic: "READY",
