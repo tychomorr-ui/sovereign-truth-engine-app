@@ -32,6 +32,7 @@ import { getConfiguredLocalModelProvider } from "./local-model";
 import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt, searchDurableMemory, updateDurableMemory } from "./keira-durable-memory";
 import { proposeAdaptation } from "./adaptation-engine";
 import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
+import { runApexCanonical } from "./apex-canonical";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 
@@ -43,6 +44,30 @@ export const portalChatRouter = router({
   getLocalModelStatus: protectedProcedure.query(async () => {
     return await getConfiguredLocalModelProvider().modelInfo();
   }),
+
+  runApexCanonical: protectedProcedure
+    .input(z.object({
+      intent: z.string().trim().min(1).max(12000),
+      contextSources: z.array(z.string().trim().min(1).max(255)).max(50).default([]),
+      requestedCapability: z.enum(["deterministic", "local_model", "local_tool", "trusted_mesh", "external_provider"]).optional(),
+      consequential: z.boolean().default(false),
+      humanConfirmed: z.boolean().default(false),
+      authority: z.enum(["operator", "system", "delegated", "none"]).default("operator"),
+      consent: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await runApexCanonical({
+        intent: input.intent,
+        actor: String(ctx.user.id),
+        contextSources: input.contextSources,
+        requestedCapability: input.requestedCapability,
+        consequential: input.consequential,
+        humanConfirmed: input.humanConfirmed,
+        authority: { identity: String(ctx.user.id), authority: input.authority, consent: input.consent, revoked: false },
+      });
+      await persistReceipt(ctx.user.id, result.receipt);
+      return result;
+    }),
 
   getDurableMemory: protectedProcedure
     .input(z.object({ memoryClass: z.string().trim().min(1).max(64).optional() }))
