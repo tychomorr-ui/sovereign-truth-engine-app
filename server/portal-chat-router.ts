@@ -33,8 +33,15 @@ import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, pe
 import { proposeAdaptation } from "./adaptation-engine";
 import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
 import { runApexCanonical } from "./apex-canonical";
+import { getDegradationMatrix, OfflineResilienceController } from "./offline-resilience";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
+const resilienceControllers = new Map<number, OfflineResilienceController>();
+function getResilienceController(userId: number): OfflineResilienceController {
+  let controller = resilienceControllers.get(userId);
+  if (!controller) { controller = new OfflineResilienceController(); resilienceControllers.set(userId, controller); }
+  return controller;
+}
 
 export const portalChatRouter = router({
   getCapabilities: protectedProcedure.query(() => getKeiraCapabilities()),
@@ -68,6 +75,16 @@ export const portalChatRouter = router({
       await persistReceipt(ctx.user.id, result.receipt);
       return result;
     }),
+
+  getResilienceStatus: protectedProcedure.query(({ ctx }) => ({ state: getResilienceController(ctx.user.id).getState(), matrix: getDegradationMatrix() })),
+
+  queueOfflineWork: protectedProcedure
+    .input(z.object({ idempotencyKey: z.string().trim().min(1).max(255), intent: z.string().trim().min(1).max(12000), authority: z.string().trim().min(1).max(255), policy: z.string().trim().min(1).max(2000), requiredCapability: z.string().trim().min(1).max(120), expiresAt: z.coerce.date(), consequential: z.boolean().default(false), authorityValid: z.boolean().default(false), policyValid: z.boolean().default(false) }))
+    .mutation(({ ctx, input }) => getResilienceController(ctx.user.id).queueAuthorizedWork({ ...input, expiresAt: input.expiresAt.toISOString() })),
+
+  revokeOfflineWork: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(({ ctx, input }) => getResilienceController(ctx.user.id).revokeWork(input.id)),
 
   getDurableMemory: protectedProcedure
     .input(z.object({ memoryClass: z.string().trim().min(1).max(64).optional() }))
