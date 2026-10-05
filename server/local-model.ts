@@ -18,6 +18,11 @@ export type ModelRegistryEntry = {
   status: ModelStatus;
   local_only: boolean;
   enabled: boolean;
+  version?: string | null;
+  model_hash?: string | null;
+  hardware_requirements?: string[];
+  license?: string | null;
+  approved?: boolean;
   health: ModelHealth;
   last_checked: string | null;
 };
@@ -59,6 +64,7 @@ export type ModelResult = {
 
 export interface LocalModelProvider {
   generate(request: ModelRequest): Promise<ModelResult>;
+  generateStructured?(request: ModelRequest, schema: Record<string, unknown>): Promise<ModelResult>;
   stream(request: ModelRequest): AsyncIterable<string>;
   health(signal?: AbortSignal): Promise<ModelHealth>;
   modelInfo(signal?: AbortSignal): Promise<ModelRegistryEntry>;
@@ -150,6 +156,10 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
     yield result.content;
   }
 
+  async generateStructured(request: ModelRequest, schema: Record<string, unknown>): Promise<ModelResult> {
+    return this.generate({ ...request, system: `${request.system}\nReturn JSON matching this schema exactly: ${JSON.stringify(schema)}` });
+  }
+
   async health(signal?: AbortSignal): Promise<ModelHealth> {
     const checkedAt = new Date().toISOString();
     if (!this.endpoint || !this.model) return { runtimeReachable: false, modelLoaded: false, modelResponding: false, contextCapacity: null, generationAvailable: false, failureReason: "LOCAL_MODEL_UNAVAILABLE: model or endpoint not configured", latencyMs: null, checkedAt };
@@ -167,7 +177,7 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
 
   async modelInfo(signal?: AbortSignal): Promise<ModelRegistryEntry> {
     const health = await this.health(signal);
-    return { model_id: `${providerName(this.runtime)}:${this.model}`, provider: providerName(this.runtime), endpoint: this.endpoint, model_name: this.model, context_window: health.contextCapacity, capabilities: [...this.capabilities()], quantization: null, status: health.generationAvailable ? "HEALTHY" : this.endpoint && this.model ? "UNAVAILABLE" : "CONFIGURED_NOT_VERIFIED", local_only: true, enabled: Boolean(this.endpoint && this.model), health, last_checked: health.checkedAt };
+    return { model_id: `${providerName(this.runtime)}:${this.model}`, provider: providerName(this.runtime), endpoint: this.endpoint, model_name: this.model, context_window: health.contextCapacity, capabilities: [...this.capabilities()], quantization: null, version: null, model_hash: null, hardware_requirements: [], license: null, approved: true, status: health.generationAvailable ? "HEALTHY" : this.endpoint && this.model ? "UNAVAILABLE" : "CONFIGURED_NOT_VERIFIED", local_only: true, enabled: Boolean(this.endpoint && this.model), health, last_checked: health.checkedAt };
   }
 }
 

@@ -34,6 +34,7 @@ import { proposeAdaptation } from "./adaptation-engine";
 import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
 import { runApexCanonical } from "./apex-canonical";
 import { getDegradationMatrix, OfflineResilienceController } from "./offline-resilience";
+import { runGovernedLocalGeneration } from "./governed-local-intelligence";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 const resilienceControllers = new Map<number, OfflineResilienceController>();
@@ -72,6 +73,21 @@ export const portalChatRouter = router({
         humanConfirmed: input.humanConfirmed,
         authority: { identity: String(ctx.user.id), authority: input.authority, consent: input.consent, revoked: false },
       });
+      await persistReceipt(ctx.user.id, result.receipt);
+      return result;
+    }),
+
+  runGovernedLocalGeneration: protectedProcedure
+    .input(z.object({
+      request: z.string().trim().min(1).max(12000),
+      intent: z.string().trim().min(1).max(2000),
+      responseContract: z.enum(["EXPLANATION", "SUMMARY", "CLASSIFICATION", "EVIDENCE_REVIEW", "NEXT_STEP", "PROPOSAL", "DIAGNOSTIC", "ADJUDICATION_INPUT"]),
+      runtime: z.string().trim().min(1).max(120),
+      contextSources: z.array(z.object({ name: z.string().trim().min(1).max(120), value: z.unknown(), source: z.string().trim().min(1).max(255), provenance: z.enum(["KNOWN", "UNKNOWN", "INFERRED", "CONFLICTED", "UNAVAILABLE"]), authorized: z.boolean(), necessary: z.boolean() })).max(50).default([]),
+      evidence: z.array(z.object({ name: z.string().trim().min(1).max(120), value: z.unknown(), source: z.string().trim().min(1).max(255), provenance: z.enum(["KNOWN", "UNKNOWN", "INFERRED", "CONFLICTED", "UNAVAILABLE"]), authorized: z.boolean(), necessary: z.boolean() })).max(50).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await runGovernedLocalGeneration({ ...input, authority: String(ctx.user.id) });
       await persistReceipt(ctx.user.id, result.receipt);
       return result;
     }),
