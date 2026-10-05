@@ -1,0 +1,528 @@
+{
+  "generatedAt": "2026-10-05T16:16:19.324Z",
+  "scenarios": [
+    {
+      "name": "pure deterministic",
+      "implementedPath": "APEX \u2192 deterministic capability \u2192 bounded reflection \u2192 verification \u2192 receipt",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "18de3dd5-d106-4253-b60e-fb79970532ac"
+      ],
+      "evidence": [
+        "selected capability is deterministic",
+        "LOCAL radius",
+        "external providers disabled"
+      ],
+      "notes": [
+        "No database memory is assembled by APEX itself."
+      ],
+      "pass": true
+    },
+    {
+      "name": "local model",
+      "implementedPath": "APEX \u2192 local_model capability \u2192 supplied local adapter \u2192 reflection \u2192 verification \u2192 receipt",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "ef9d0339-98a5-4f7b-92d7-3f324f22bb56"
+      ],
+      "evidence": [
+        "local model explicitly declared READY",
+        "model output marked GENERATED_INFERENCE",
+        "reflection revises overconfident wording"
+      ],
+      "notes": [
+        "The test adapter is injected; no live model process is claimed."
+      ],
+      "pass": true
+    },
+    {
+      "name": "memory-assisted",
+      "implementedPath": "memory fabric assembly \u2192 APEX contextSources \u2192 deterministic capability \u2192 reflection \u2192 receipt",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "eeae1156-6f31-4e36-b5ad-1e94f69fe37d"
+      ],
+      "evidence": [
+        "memory fabric supplied one memory ID",
+        "APEX receipt contains that context source"
+      ],
+      "notes": [
+        "Memory is assembled outside APEX and passed as declared context; APEX does not query memory itself."
+      ],
+      "pass": true
+    },
+    {
+      "name": "reflective",
+      "implementedPath": "APEX execution \u2192 bounded reflection \u2192 revision/termination \u2192 verification \u2192 receipt",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "13f91d76-d5b9-4332-953f-a50033f5c4c0"
+      ],
+      "evidence": [
+        "reflection records and termination are returned",
+        "bounded operation count"
+      ],
+      "notes": [],
+      "pass": true
+    },
+    {
+      "name": "adaptive",
+      "implementedPath": "adaptation proposal \u2192 evidence threshold \u2192 explicit activation \u2192 separate APEX request",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "8970c3e1-6921-4cca-81ae-95400b1ebc9e"
+      ],
+      "evidence": [
+        "proposal eligible",
+        "activation ACTIVE",
+        "APEX completes separately"
+      ],
+      "notes": [
+        "Adaptation is not automatically invoked or applied inside APEX; this is a composed two-step flow."
+      ],
+      "pass": true
+    },
+    {
+      "name": "offline",
+      "implementedPath": "resilience state \u2192 authorized queue \u2192 APEX local deterministic path",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "b7a432de-fb88-4ce4-a972-7569ece01cb6"
+      ],
+      "evidence": [
+        "OFFLINE",
+        "QUEUED",
+        "external providers disabled"
+      ],
+      "notes": [
+        "Queueing and APEX are separate APIs; no automatic queue drain is claimed."
+      ],
+      "pass": true
+    },
+    {
+      "name": "unauthorized",
+      "implementedPath": "APEX authority gate before execution",
+      "status": "BLOCKED",
+      "failure": "AUTHORITY_REQUIRED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "AUTHORIZATION:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "416e2636-cb98-4d77-bdd9-3f7e06166307"
+      ],
+      "evidence": [
+        "no execution trace after authorization",
+        "AUTHORITY_REQUIRED"
+      ],
+      "notes": [],
+      "pass": true
+    },
+    {
+      "name": "policy-denied",
+      "implementedPath": "APEX policy gate before plan/execution",
+      "status": "BLOCKED",
+      "failure": "POLICY_DENIED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "POLICY:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "0e997f0e-0a5e-4ef0-896e-f094bc946be4"
+      ],
+      "evidence": [
+        "POLICY_DENIED receipt",
+        "no execution stage"
+      ],
+      "notes": [],
+      "pass": true
+    },
+    {
+      "name": "missing-model",
+      "implementedPath": "capability discovery rejects unavailable local model",
+      "status": "BLOCKED",
+      "failure": "MODEL_UNAVAILABLE",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:blocked",
+        "CAPABILITY_DISCOVERY:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "b2e6beb2-1d6f-4404-800e-6afa5f6f98d6"
+      ],
+      "evidence": [
+        "MODEL_UNAVAILABLE"
+      ],
+      "notes": [
+        "No remote fallback inferred."
+      ],
+      "pass": true
+    },
+    {
+      "name": "conflicting-evidence",
+      "implementedPath": "memory conflict detection \u2192 unavailable context declaration \u2192 APEX review",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "eb4cb1e9-7a19-455a-85fb-0067cda32d64"
+      ],
+      "evidence": [
+        "memory fabric requires human review",
+        "conflict excluded from included context"
+      ],
+      "notes": [
+        "APEX does not independently resolve memory conflicts; it receives the conflict marker as context."
+      ],
+      "pass": true
+    },
+    {
+      "name": "human-confirmation",
+      "implementedPath": "APEX authority/policy confirmation gate",
+      "status": "BLOCKED",
+      "failure": "HUMAN_CONFIRMATION_REQUIRED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "AUTHORIZATION:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "37aa0773-65dd-4b82-806a-9277ac4e105f"
+      ],
+      "evidence": [
+        "HUMAN_CONFIRMATION_REQUIRED",
+        "no execution"
+      ],
+      "notes": [],
+      "pass": true
+    },
+    {
+      "name": "recovery after interruption",
+      "implementedPath": "offline queue \u2192 recovery validation \u2192 completion idempotency \u2192 APEX local request",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "30e6ee6b-4193-4cc0-932c-2dbad9a22d47"
+      ],
+      "evidence": [
+        "COMPLETED",
+        "COMPLETED"
+      ],
+      "notes": [
+        "Recovery execution is controlled resilience-controller execution, then APEX is invoked separately."
+      ],
+      "pass": true
+    },
+    {
+      "name": "revoked authority",
+      "implementedPath": "APEX revoked-authority gate",
+      "status": "BLOCKED",
+      "failure": "AUTHORITY_REQUIRED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "AUTHORIZATION:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "dfe71693-8de4-4f5f-b1c7-83d7c954dae6"
+      ],
+      "evidence": [
+        "AUTHORITY_REQUIRED",
+        "no execution"
+      ],
+      "notes": [],
+      "pass": true
+    },
+    {
+      "name": "revoked memory",
+      "implementedPath": "memory revocation \u2192 excluded context \u2192 APEX deterministic request",
+      "status": "COMPLETED",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:completed",
+        "AUTHORIZATION:completed",
+        "POLICY:completed",
+        "PLAN:completed",
+        "EXECUTION:entered",
+        "EXECUTION:completed",
+        "REFLECTION:entered",
+        "REFLECTION:completed",
+        "VERIFICATION:entered",
+        "VERIFICATION:completed",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "60c1dea9-a4c9-4189-aa80-63a1eefb1b0c"
+      ],
+      "evidence": [
+        "revoked memory supplied zero IDs",
+        "final receipt does not contain the revoked memory ID"
+      ],
+      "notes": [
+        "Receipt context includes execution/reflection linkage by contract; it does not indicate revoked memory was supplied."
+      ],
+      "pass": true
+    },
+    {
+      "name": "external-provider-disabled",
+      "implementedPath": "capability discovery reports external provider disabled",
+      "status": "BLOCKED",
+      "failure": "CAPABILITY_UNAVAILABLE",
+      "stages": [
+        "INTENT:entered",
+        "INTENT:completed",
+        "CONTEXT:completed",
+        "CAPABILITY_DISCOVERY:entered",
+        "CAPABILITY_DISCOVERY:blocked",
+        "CAPABILITY_DISCOVERY:blocked",
+        "RECEIPT:completed"
+      ],
+      "receipts": [
+        "5b17b5fc-8925-42fc-9846-f5b92598414b"
+      ],
+      "evidence": [
+        "CAPABILITY_UNAVAILABLE",
+        "external providers disabled"
+      ],
+      "notes": [],
+      "pass": true
+    }
+  ],
+  "invariants": [
+    {
+      "invariant": "CAPABILITY \u2260 AUTHORITY",
+      "holds": true,
+      "evidence": "local_tool capability does not execute without authority/consent"
+    },
+    {
+      "invariant": "DECLARED \u2260 OBSERVED",
+      "holds": true,
+      "evidence": "truth-state transition table has separate states and no declared\u2192verified shortcut"
+    },
+    {
+      "invariant": "OBSERVED \u2260 VERIFIED",
+      "holds": true,
+      "evidence": "truth-state requires an explicit OBSERVED\u2192VERIFIED transition"
+    },
+    {
+      "invariant": "VERIFIED \u2260 AUTHORIZED",
+      "holds": true,
+      "evidence": "authorization is checked independently in APEX"
+    },
+    {
+      "invariant": "AUTHORIZED \u2260 EXECUTED",
+      "holds": true,
+      "evidence": "plan and execution are separate trace stages"
+    },
+    {
+      "invariant": "EXECUTED \u2260 COMPLETED",
+      "holds": true,
+      "evidence": "execution result state is linked but final completion is separately verified"
+    },
+    {
+      "invariant": "COMPLETED \u2260 ATTESTED",
+      "holds": true,
+      "evidence": "truth-state table keeps completion and attestation distinct"
+    },
+    {
+      "invariant": "UNKNOWN \u2260 FALSE",
+      "holds": true,
+      "evidence": "UNKNOWN is an information state, not a false value"
+    },
+    {
+      "invariant": "INFERRED \u2260 FACT",
+      "holds": true,
+      "evidence": "memory authority rejects inference provenance classified as known"
+    },
+    {
+      "invariant": "MODEL OUTPUT \u2260 TRUTH",
+      "holds": true,
+      "evidence": "the injected local-model output is revised by bounded reflection; the inner GENERATED_INFERENCE receipt is linked through the execution path, while the final APEX receipt reports pipeline completion"
+    },
+    {
+      "invariant": "FAILURE \u2260 SUCCESS",
+      "holds": true,
+      "evidence": "policy denial returns blocked typed result"
+    },
+    {
+      "invariant": "EXTERNAL \u2260 LOCAL",
+      "holds": true,
+      "evidence": "external capability is disabled and no local/external substitution is hidden"
+    },
+    {
+      "invariant": "PROPOSAL \u2260 EXECUTION",
+      "holds": true,
+      "evidence": "adaptation activation and APEX request remain separate operations"
+    }
+  ],
+  "architecture": {
+    "apexInvokesMemory": false,
+    "apexInvokesAdaptation": false,
+    "apexInvokesReflection": true,
+    "apexInvokesReceipts": true
+  },
+  "verdict": "FUNCTIONING_LOCAL_FIRST_RUNTIME_WITH_SEPARATE_MEMORY_ADAPTATION_APIS"
+}
