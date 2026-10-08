@@ -44,6 +44,20 @@ const CONTRACT_RULES: Record<ResponseContract, string> = {
 
 const SYSTEM_CONTRACT = "You are a local transformation engine operating inside a deterministic sovereign runtime. You do not have authority. You do not determine truth. You do not create permissions. You do not execute actions. You may only transform the authorized context you receive. Do not invent missing evidence. If information is absent, return UNKNOWN. If a claim is unsupported by supplied evidence, mark it UNSUPPORTED. Return only the requested schema.";
 
+export const GOVERNED_OUTPUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  required: ["answer", "claims", "evidence_refs", "unknowns", "proposed_next_step", "confidence"],
+  properties: {
+    answer: { type: "string" },
+    claims: { type: "array", items: { type: "object", additionalProperties: false, required: ["claim", "evidence_refs"], properties: { claim: { type: "string" }, evidence_refs: { type: "array", items: { type: "string" } } } } },
+    evidence_refs: { type: "array", items: { type: "string" } },
+    unknowns: { type: "array", items: { type: "string" } },
+    proposed_next_step: { type: "string" },
+    confidence: { type: "string", enum: ["low", "medium", "high"] },
+  },
+};
+
 function hash(value: unknown): string { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
 function field(name: string, value: unknown, source: string, provenance: ProvenanceState, authorized = true, necessary = true): ContextField { return { name, value, source, provenance, authorized, necessary }; }
 function assertField(input: ContextField): void { if (!input.source.trim()) throw new Error(`context field ${input.name} has no source`); if (!input.provenance) throw new Error(`context field ${input.name} has no provenance`); if (!input.authorized) throw new Error(`context field ${input.name} is unauthorized`); if (!input.necessary) throw new Error(`context field ${input.name} is unnecessary`); }
@@ -124,7 +138,9 @@ export async function runGovernedLocalGeneration(input: { request: string; inten
   if (modelAvailable) {
     const request: { system: string; messages: LocalChatMessage[]; contextBoundary: ContextBoundary; maxTokens: number } = { system: contractInstruction, messages: [{ role: "user", content: JSON.stringify(context) }], contextBoundary: "LOCAL_ONLY", maxTokens: 1200 };
     try {
-      const raw: ModelResult = await provider.generate(request);
+      const raw: ModelResult = provider.generateStructured
+        ? await provider.generateStructured(request, GOVERNED_OUTPUT_SCHEMA)
+        : await provider.generate(request);
       output = validateStructuredOutput(extractJson(raw.content));
       usedLocalModel = true;
       model = { id: raw.modelId, provider: raw.provider, runtime: null, version: null, modelHash: null };

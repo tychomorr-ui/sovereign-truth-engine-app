@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LocalModelRegistry, OpenAiCompatibleLocalProvider } from "./local-model";
+import { GOVERNED_JSON_GBNF, LocalModelRegistry, OpenAiCompatibleLocalProvider } from "./local-model";
 
 const originalFetch = globalThis.fetch;
 
@@ -20,8 +20,13 @@ describe("Stage 3 local model provider", () => {
   });
 
   it("executes local inference as generated content, not verified truth", async () => {
-    globalThis.fetch = vi.fn(async (input) => {
+    globalThis.fetch = vi.fn(async (input, init) => {
       expect(String(input)).toContain("/chat/completions");
+      const body = JSON.parse(String(init?.body)) as { model: string; temperature: number; top_p: number; seed: number };
+      expect(body.model).toBe("test-model");
+      expect(body.temperature).toBe(0);
+      expect(body.top_p).toBe(1);
+      expect(body.seed).toBe(42);
       return new Response(JSON.stringify({ choices: [{ message: { content: "generated local answer" }, finish_reason: "stop" }], usage: { prompt_tokens: 4, completion_tokens: 3, total_tokens: 7 } }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
     const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:8080/v1", "test-model", "vllm");
@@ -63,5 +68,28 @@ describe("Stage 3 local model provider", () => {
     const registry = new LocalModelRegistry();
     registry.register({ model_id: "ollama:model", provider: "ollama", endpoint: "http://127.0.0.1:11434/v1", model_name: "model", context_window: null, capabilities: ["generate"], quantization: null, status: "CONFIGURED_NOT_VERIFIED", local_only: true, enabled: true, health: { runtimeReachable: false, modelLoaded: false, modelResponding: false, contextCapacity: null, generationAvailable: false, failureReason: null, latencyMs: null, checkedAt: new Date().toISOString() }, last_checked: null });
     expect(registry.get("ollama:model")?.status).toBe("CONFIGURED_NOT_VERIFIED");
+  });
+
+  it("sends JSON Schema and live GBNF constraints to llama.cpp", async () => {
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { response_format?: { type: string; schema: Record<string, unknown> }; grammar?: string };
+      expect(body.response_format?.type).toBe("json_schema");
+      expect(body.response_format?.schema).toEqual({ type: "object", properties: { answer: { type: "string" } } });
+      expect(body.grammar).toBe(GOVERNED_JSON_GBNF);
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"answer":"ok"}' } }] }), { status: 200 });
+    }) as typeof fetch;
+    const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:8080/v1", "qwen", "llama.cpp");
+    await provider.generateStructured({ system: "return json", messages: [], contextBoundary: "LOCAL_ONLY" }, { type: "object", properties: { answer: { type: "string" } } });
+  });
+
+  it("sends JSON Schema to Ollama without claiming GBNF support", async () => {
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { response_format?: { type: string }; grammar?: string };
+      expect(body.response_format?.type).toBe("json_schema");
+      expect(body.grammar).toBeUndefined();
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"answer":"ok"}' } }] }), { status: 200 });
+    }) as typeof fetch;
+    const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:11434/v1", "qwen2.5:3b", "ollama");
+    await provider.generateStructured({ system: "return json", messages: [], contextBoundary: "LOCAL_ONLY" }, { type: "object" });
   });
 });

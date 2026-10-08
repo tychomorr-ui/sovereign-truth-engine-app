@@ -44,6 +44,9 @@ export type ModelRequest = {
   maxTokens?: number;
   temperature?: number;
   topP?: number;
+  seed?: number;
+  structuredSchema?: Record<string, unknown>;
+  grammar?: string;
   contextBoundary?: ContextBoundary;
   signal?: AbortSignal;
 };
@@ -92,6 +95,18 @@ function providerName(runtime: string): ModelRegistryEntry["provider"] {
   return "openai-compatible-local";
 }
 
+function isLlamaCpp(runtime: string): boolean { return runtime.toLowerCase().includes("llama.cpp") || runtime.toLowerCase().includes("llama-cpp"); }
+
+/** Constrains JSON syntax only; deterministic adjudication still decides claim status. */
+export const GOVERNED_JSON_GBNF = String.raw`root ::= "{" ws "\"answer\"" ws ":" ws string "," ws "\"claims\"" ws ":" ws claims "," ws "\"evidence_refs\"" ws ":" ws string_array "," ws "\"unknowns\"" ws ":" ws string_array "," ws "\"proposed_next_step\"" ws ":" ws string "," ws "\"confidence\"" ws ":" ws confidence ws "}"
+claims ::= "[" ws (claim (ws "," ws claim)*)? ws "]"
+claim ::= "{" ws "\"claim\"" ws ":" ws string "," ws "\"evidence_refs\"" ws ":" ws string_array ws "}"
+string_array ::= "[" ws (string (ws "," ws string)*)? ws "]"
+confidence ::= "\"low\"" | "\"medium\"" | "\"high\""
+string ::= "\"" ( [^"\\] | "\\" escape )* "\""
+escape ::= ["\\/bfnrt] | "u" [0-9a-fA-F]{4}
+ws ::= [ \t\n\r]*`;
+
 export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
   private readonly active = new Map<string, AbortController>();
   private readonly endpoint: string;
@@ -135,7 +150,16 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         method: "POST",
         signal: controller.signal,
         headers: { "Content-Type": "application/json", ...(ENV.localLlmApiKey ? { Authorization: `Bearer ${ENV.localLlmApiKey}` } : {}) },
-        body: JSON.stringify({ model: this.model, messages: [{ role: "system", content: request.system }, ...request.messages], max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens, temperature: request.temperature ?? ENV.localLlmTemperature, top_p: request.topP ?? ENV.localLlmTopP }),
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: "system", content: request.system }, ...request.messages],
+          max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
+          temperature: request.temperature ?? ENV.localLlmTemperature,
+          top_p: request.topP ?? ENV.localLlmTopP,
+          seed: request.seed ?? ENV.localLlmSeed,
+          ...(request.structuredSchema ? { response_format: { type: "json_schema", schema: request.structuredSchema } } : {}),
+          ...(request.grammar ? { grammar: request.grammar } : {}),
+        }),
       });
       if (!response.ok) throw new Error(`LOCAL_MODEL_UNAVAILABLE: runtime returned HTTP ${response.status}.`);
       const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: string }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
@@ -157,7 +181,13 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
   }
 
   async generateStructured(request: ModelRequest, schema: Record<string, unknown>): Promise<ModelResult> {
-    return this.generate({ ...request, system: `${request.system}\nReturn JSON matching this schema exactly: ${JSON.stringify(schema)}` });
+    const llamaCpp = isLlamaCpp(this.runtime);
+    return this.generate({
+      ...request,
+      system: `${request.system}\nReturn JSON matching this schema exactly: ${JSON.stringify(schema)}`,
+      structuredSchema: schema,
+      ...(llamaCpp ? { grammar: GOVERNED_JSON_GBNF } : {}),
+    });
   }
 
   async health(signal?: AbortSignal): Promise<ModelHealth> {
