@@ -32,6 +32,10 @@ import {
 import { ESOTERIC_PROMPT_PRESETS } from "../../../shared/esotericPrompts";
 import { Streamdown } from "streamdown";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ingestTextDocument } from "../lib/corpus/ingest";
+import { TransformersJsEmbeddingProvider } from "../lib/embedding/transformersjs-provider";
+import { MistCore } from "../lib/mist/core";
+import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
 
 type LearningStage = "awakening" | "exploration" | "integration" | "mastery" | "resistance";
 type DialogueStrategy = "informative" | "socratic" | "prophetic" | "forensic" | "catalytic";
@@ -183,6 +187,9 @@ export default function PortalChat() {
   const [showKeywordPanel, setShowKeywordPanel] = useState(false);
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [showCapabilityPanel, setShowCapabilityPanel] = useState(false);
+  const [showMistPanel, setShowMistPanel] = useState(false);
+  const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
+  const [mistStatus, setMistStatus] = useState<string | null>(null);
   const [ledgerLabel, setLedgerLabel] = useState("");
   const [ledgerContent, setLedgerContent] = useState("");
   const [ledgerKind, setLedgerKind] = useState<ContextLedgerEntry["kind"]>("note");
@@ -249,6 +256,13 @@ export default function PortalChat() {
     { enabled: isAuthenticated && showContextPanel && recallQuery.trim().length >= 2 },
   );
   const promoteRecallMutation = trpc.portal.chat.promoteRecallToContextLedger.useMutation();
+  const mistHistoryQuery = trpc.portal.listMistTrajectories.useQuery(
+    { limit: 24 },
+    { enabled: isAuthenticated && showMistPanel },
+  );
+  const persistMistTrajectoryMutation = trpc.portal.persistMistTrajectory.useMutation();
+  const mistStoreRef = useRef<IndexedDbCorpusStore | null>(null);
+  const mistProviderRef = useRef<TransformersJsEmbeddingProvider | null>(null);
 
   useEffect(() => {
     if (conversationsQuery.data) {
@@ -317,6 +331,12 @@ export default function PortalChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (showMistPanel && selectedMistTrajectoryId === null && mistHistoryQuery.data?.[0]) {
+      setSelectedMistTrajectoryId(mistHistoryQuery.data[0].trajectoryId);
+    }
+  }, [showMistPanel, selectedMistTrajectoryId, mistHistoryQuery.data]);
 
   const establishOwnerSession = async () => {
     setAuthError(null);
@@ -446,8 +466,12 @@ export default function PortalChat() {
     } else if (label === "Echoes") {
       setShowThreads(true);
     } else if (label === "Arcana" || label === "Patterns") {
-      setShowKeywordPanel(true);
-      setShowContextPanel(true);
+      if (label === "Patterns") {
+        setShowMistPanel(true);
+      } else {
+        setShowKeywordPanel(true);
+        setShowContextPanel(true);
+      }
     } else if (label === "Resonance") {
       setShowVoicePanel(true);
     } else if (label === "Interface") {
@@ -468,6 +492,44 @@ export default function PortalChat() {
       await conversationsQuery.refetch();
     } catch (error) {
       console.error("Failed to create KEIRA conversation", error);
+    }
+  };
+
+  const handleSaveMistTrajectory = async () => {
+    if (!messages.length || activeConversationId === null) {
+      setMistStatus("Send at least one message before saving a trajectory.");
+      return;
+    }
+
+    setMistStatus("Tracing the local conversation corpus…");
+    try {
+      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
+      mistStoreRef.current = store;
+      const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
+      mistProviderRef.current = provider;
+      const conversation = conversations.find((item) => item.id === activeConversationId);
+      const corpus = await ingestTextDocument({
+        filename: `portal-conversation-${activeConversationId}.txt`,
+        mimeType: "text/plain",
+        title: conversation?.title ?? "Portal conversation",
+        source: "portal-chat",
+        role: "dialogue",
+        scope: "operator-local",
+        tags: ["portal", "conversation", String(activeConversationId)],
+        content: messages.map((message) => `${message.role === "user" ? "Operator" : "KEIRA"}: ${message.content}`).join("\n\n"),
+      });
+      await store.putDocument(corpus.document);
+      await Promise.all(corpus.chunks.map((chunk) => store.putChunk(chunk)));
+
+      const query = [...messages].reverse().find((message) => message.role === "user")?.content || messages[messages.length - 1].content;
+      const result = await new MistCore(store, provider).retrieve(query, { documentId: corpus.document.id });
+      const persisted = await persistMistTrajectoryMutation.mutateAsync({ result });
+      setSelectedMistTrajectoryId(persisted.trajectoryId);
+      setMistStatus(`Trajectory saved · ${persisted.merkle.leafCount} leaves · SHA-256 root committed.`);
+      await mistHistoryQuery.refetch();
+    } catch (error) {
+      console.error("Failed to save MIST trajectory", error);
+      setMistStatus(error instanceof Error ? `Trajectory unavailable: ${error.message}` : "Trajectory could not be saved.");
     }
   };
 
@@ -643,6 +705,7 @@ export default function PortalChat() {
   const resonanceCue = cmap?.nextAction || lastMessageMetadata?.nextAction || "Awaiting a resonant thread";
   const presenceState = cmap?.handshakeComplete ? "Contact" : "Awaiting Contact";
   const currentState = strategy ? STRATEGY_LABELS[strategy] : presenceState;
+  const selectedMistTrajectory = mistHistoryQuery.data?.find((trajectory) => trajectory.trajectoryId === selectedMistTrajectoryId) ?? null;
 
   return (
     <main className="min-h-screen bg-[#03050a] text-[#f4f4f5] selection:bg-[#d7c7ff] selection:text-[#07090f]">
@@ -773,6 +836,7 @@ export default function PortalChat() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setShowMistPanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#cbb8ff] transition hover:border-[#cbb8ff] hover:bg-[#21154d]" aria-label="Open MIST trajectory archive"><Activity className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setShowKeywordPanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#cbb8ff] transition hover:border-[#cbb8ff] hover:bg-[#21154d]" aria-label="Open esoteric signals"><Sparkles className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setShowVoicePanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#101a32]" aria-label="Open voice resonance"><Volume2 className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setShowProfilePanel(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#101a32]" aria-label="Open alien profile"><UserRound className="h-4 w-4" /></button>
@@ -979,6 +1043,46 @@ export default function PortalChat() {
                 </div>
                 {runtimeStatusQuery.data && <div className="mt-4 border border-[#273865] bg-[#0d1630] p-3 text-xs leading-6 text-[#a6aec0]">Model: {runtimeStatusQuery.data.discovery.model || "not configured"} · Runtime: {runtimeStatusQuery.data.discovery.runtime || "not configured"} · Inference: {runtimeStatusQuery.data.discovery.inferenceReady ? "ready" : "not ready"}{runtimeStatusQuery.data.discovery.error ? ` · ${runtimeStatusQuery.data.discovery.error}` : ""}</div>}
                 <div className="mt-5 grid gap-3 md:grid-cols-2">{capabilitiesQuery.data?.map((capability) => <div key={capability.id} className="border border-[#273865] bg-[#0d1630] p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm text-[#f3eadb]">{capability.label}</span><span className={`text-[0.58rem] uppercase tracking-[0.16em] ${capability.status === "available" ? "text-[#8be9ff]" : "text-[#d7c7ff]"}`}>{capability.status.replace("-", " ")}</span></div><p className="mt-2 text-xs leading-6 text-[#a6aec0]">{capability.detail}</p></div>) || <p className="text-sm text-[#737b8f]">Loading verified capability status…</p>}</div>
+              </section>
+            )}
+
+            {showMistPanel && (
+              <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="MIST trajectory history">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><Activity className="h-4 w-4" /> MIST trajectory archive</div>
+                  <button type="button" onClick={() => setShowMistPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close MIST trajectory archive"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="max-w-2xl text-xs leading-6 text-[#737b8f]">Trace this conversation through local MIST layers, then persist the resulting trajectory and Merkle commitment to your account.</p>
+                  <Button type="button" onClick={() => void handleSaveMistTrajectory()} disabled={!messages.length || persistMistTrajectoryMutation.isPending || mistStatus === "Tracing the local conversation corpus…"} className="rounded-none bg-[#8be9ff] text-[#041018] hover:bg-[#c4f7ff]">
+                    {persistMistTrajectoryMutation.isPending || mistStatus === "Tracing the local conversation corpus…" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save current trajectory
+                  </Button>
+                </div>
+                {mistStatus && <p className="mt-3 text-xs text-[#8be9ff]" role="status">{mistStatus}</p>}
+                <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {mistHistoryQuery.isFetching && <p className="text-xs text-[#737b8f]">Loading saved trajectories…</p>}
+                    {!mistHistoryQuery.isFetching && !mistHistoryQuery.data?.length && <p className="border border-[#273865] bg-[#0d1630] p-3 text-xs leading-5 text-[#737b8f]">No saved MIST trajectories yet.</p>}
+                    {mistHistoryQuery.data?.map((trajectory) => (
+                      <button key={trajectory.trajectoryId} type="button" onClick={() => setSelectedMistTrajectoryId(trajectory.trajectoryId)} className={`w-full border p-3 text-left transition ${selectedMistTrajectoryId === trajectory.trajectoryId ? "border-[#8be9ff] bg-[#13213e]" : "border-[#273865] bg-[#0d1630] hover:border-[#6f55c7]"}`}>
+                        <div className="flex items-center justify-between gap-3"><span className="truncate text-sm text-[#f3eadb]">{trajectory.queryNormalized}</span><span className="shrink-0 text-[0.58rem] uppercase tracking-[0.16em] text-[#8be9ff]">{trajectory.status}</span></div>
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.58rem] uppercase tracking-[0.14em] text-[#737b8f]"><span>{new Date(trajectory.createdAt).toLocaleString()}</span><span>{trajectory.merkle.leafCount} leaves</span></div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border border-[#273865] bg-[#0d1630] p-4">
+                    {selectedMistTrajectory ? (
+                      <>
+                        <div className="text-[0.6rem] uppercase tracking-[0.18em] text-[#cbb8ff]">Selected commitment</div>
+                        <div className="mt-2 break-all font-mono text-xs leading-5 text-[#8be9ff]">{selectedMistTrajectory.merkle.root}</div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><div className="text-[#737b8f]">Leaves</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.leafCount}</div></div><div><div className="text-[#737b8f]">Algorithm</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.algorithm}</div></div></div>
+                        <div className="mt-4 text-[0.6rem] uppercase tracking-[0.16em] text-[#737b8f]">Trajectory artifacts</div>
+                        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">{selectedMistTrajectory.merkle.leaves.map((leaf) => <div key={leaf.artifactCid} className="flex items-center justify-between gap-3 text-xs text-[#a6aec0]"><span className="truncate">{leaf.artifactCid}</span><span className="shrink-0 text-[#cbb8ff]">#{leaf.fusionRank}</span></div>)}</div>
+                      </>
+                    ) : <p className="text-xs leading-5 text-[#737b8f]">Select a saved trajectory to inspect its Merkle commitment and ranked artifacts.</p>}
+                  </div>
+                </div>
               </section>
             )}
 
