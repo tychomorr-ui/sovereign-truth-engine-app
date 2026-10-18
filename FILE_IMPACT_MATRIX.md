@@ -93,9 +93,13 @@ Status: **implemented and test-covered**. This is local semantic retrieval over 
 - `client/src/lib/mist/types.ts` — typed MIST result, layer, candidate, fusion, and in-memory trajectory contracts.
 - `client/src/lib/mist/core.ts` — deterministic L1 lexical, L2 semantic, L3 centroids, L4 Echoes, L5 Patterns, L6 Arcana, and L7 RRF fusion over the existing local corpus/embedding abstractions.
 - `server/mist-core.test.ts` — complete-layer, deterministic reuse, empty-corpus, and unavailable-embedding tests.
+- `server/mist-trajectory.ts` — validated persistence handoff, canonical leaf hashing, deterministic SHA-256 Merkle construction, and user-scoped read/list helpers.
+- `server/mist-trajectory.test.ts` — canonicalization, odd-leaf, mutation-sensitivity, and malformed-input tests.
+- `drizzle/schema.ts`, `drizzle/0015_empty_catseye.sql`, and `drizzle/meta/0015_snapshot.json` — additive trajectory envelope and immutable leaf tables.
+- `server/routers.ts` — protected persist/read/list procedures under `portal`.
 - `MIST_CORE.md` — documented constants, failure semantics, browser proof, and deferred work.
 
-Status: **implemented and browser-proven**. The core emits an in-memory bounded RRF trajectory only; Merkle, persistence, attestation, signatures, UI binding, and Phoenix remain deferred.
+Status: **implemented and browser-proven**. The core emits a bounded RRF trajectory and the protected server handoff durably stores its canonical Merkle commitment. Independent re-execution, Ed25519 attestation, signatures, UI binding, and Phoenix remain deferred.
 
 ### Phase 5/7 — attestation and Phoenix
 

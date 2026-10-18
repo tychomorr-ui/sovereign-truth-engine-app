@@ -125,7 +125,9 @@ Drizzle migrations are part of the repository and current schema checks have pas
 | `HTTPS hosted endpoint` | Platform-managed/available through WebDev | Not a repository-owned reverse proxy |
 | `Browser-local MiniLM embedding proof` | Proven | Chromium loaded same-origin model/WASM assets and observed `MODEL_READY`, finite 384-dimensional vector, and four cache entries |
 | `Browser-local corpus similarity` | Proven | Chromium persisted two MiniLM vectors in IndexedDB and ranked a River query above Mountain by local cosine similarity |
-| `Browser-local MIST core` | Proven | Chromium executed L1–L7 over four persisted MiniLM vectors and returned an in-memory RRF trajectory; no Merkle/attestation claim |
+| `Browser-local MIST core` | Proven | Chromium executed L1–L7 over four persisted MiniLM vectors and returned an in-memory RRF trajectory |
+| `Durable MIST trajectory persistence` | Implemented | Protected tRPC persist/read/list procedures, additive MySQL tables, transactional envelope-plus-leaf writes, and user scoping |
+| `MIST Merkle commitment` | Unit-proven | Canonical SHA-256 leaves, deterministic odd-node duplication, stable roots, and malformed-input rejection; no Ed25519 attestation claim |
 | Local Ollama live reachability | Unverified | Requires operator topology and endpoint configuration |
 | `10.9.0.1:11434` reachability from Manus | Not established | Do not claim connectivity |
 | CORS allowlist | Not implemented/verified | Same-origin only is the safe current assumption |
@@ -140,7 +142,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 3. A process-local queue and in-memory cMAP state are not safe assumptions under restart or multiple instances.
 4. Cross-origin scraper/API access is not configured with an explicit allowlist.
 5. The current public identity receipt is KEIRA identity provenance, not MIST trajectory attestation.
-6. Corpus persistence has no UI/upload route or live browser quota/eviction verification; MIST deployment artifacts and acceptance routes do not yet exist.
+6. Corpus persistence has no UI/upload route or live browser quota/eviction verification; durable MIST trajectory storage exists through protected tRPC procedures but is not yet wired into Portal Chat UI.
 
 ## Recommended deployment sequence after audit approval
 

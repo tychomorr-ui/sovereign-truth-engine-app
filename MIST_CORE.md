@@ -1,6 +1,6 @@
 # KEIRA Phase 4 — Deterministic MIST Retrieval Core
 
-**Status:** Implemented as a browser-local deterministic retrieval library. No UI, chat integration, local LLM generation, Phoenix recursion, Merkle attestation, or signature is included in this phase.
+**Status:** Implemented as a browser-local deterministic retrieval library with an additive server-side persistence handoff. No UI, chat integration, local LLM generation, Phoenix recursion, or Ed25519 trajectory signature is included in this phase.
 
 ## Core result contract
 
@@ -25,7 +25,7 @@ It additionally includes the normalized and SHA-256-hashed query, an explicit st
 
 | Layer | Deterministic behavior |
 |---|---|
-| L1 Lexical | Unicode-aware normalized exact-token overlap: `intersection(queryTokens, artifactTokens) / queryTokens`. Top 20. |
+| L1 Lexical | Deterministic normalized ASCII-compatible exact-token overlap: `intersection(queryTokens, artifactTokens) / queryTokens`. Top 20. |
 | L2 Semantic | Uses only `LocalCorpusSimilarityService`, the configured local embedding provider, and exact model/version-bound IndexedDB vectors. Top 20. |
 | L3 Centroid | Deterministic k-means style clustering over L2 vectors, `k = min(3, candidates)`, farthest-point deterministic seeds, deterministic tie-breaks, 12-iteration maximum. Each cluster emits its centroid and closest representative. |
 | L4 Echoes | For each L3 centroid, selects up to 3 farthest semantic artifacts that still have cosine similarity `> 0.6`. It retains centroid ID, representative CID, similarity, distance, and layer score. |
@@ -39,7 +39,15 @@ It additionally includes the normalized and SHA-256-hashed query, an explicit st
 - L2 accepts only vectors matching the active exact model name, model version, expected dimension, and finite-value invariant.
 - Empty corpus requests return an empty trajectory without initializing the embedding provider.
 - Embedding failure returns an explicit `PARTIAL` result: L1 and L6 may still report their deterministic evidence, while L2–L5 are `UNAVAILABLE`. No hosted provider or lexical stand-in is substituted for semantic retrieval.
-- `trajectoryArtifacts` are ranked fusion artifacts with CIDs, layer memberships, individual layer scores, RRF score, and rank. They are not Merkle-attested or signed in Phase 4.
+- `trajectoryArtifacts` are ranked fusion artifacts with CIDs, layer memberships, individual layer scores, RRF score, and rank. Browser retrieval remains unsigned; the persistence handoff creates a durable Merkle commitment.
+
+## Durable trajectory and Merkle commitment
+
+The protected `portal.persistMistTrajectory` procedure accepts a `MistResult` produced by the browser-local core and stores it under the authenticated user. The server validates the minimum result shape, canonicalizes each trajectory artifact with recursively sorted object keys, and computes a SHA-256 leaf hash. Leaf order is the fusion order; an odd final node is duplicated at each Merkle level. Empty trajectories receive a deterministic empty-tree root.
+
+The durable envelope stores the query hash/normalized query, status, indexing metadata, layer-count summary, RRF constant, leaf count, Merkle root, and immutable leaf rows. The companion `portal.getMistTrajectory` and `portal.listMistTrajectories` procedures enforce user scoping. Writes use one database transaction for the envelope and its leaves, so a committed root always has its committed leaf set.
+
+This is tamper-evident storage, not an authority or signature: the browser-submitted result is still untrusted input, and no Ed25519 key is used. A later attestation phase may sign the stored root after independent verification.
 
 ## Files
 
@@ -47,13 +55,17 @@ It additionally includes the normalized and SHA-256-hashed query, an explicit st
 client/src/lib/mist/types.ts
 client/src/lib/mist/core.ts
 server/mist-core.test.ts
+server/mist-trajectory.ts
+server/mist-trajectory.test.ts
+drizzle/schema.ts
+drizzle/0015_empty_catseye.sql
 MIST_CORE.md
 ```
 
 ## Deferred work
 
 - Corpus upload/UI and Portal Chat retrieval integration.
-- MIST trajectory persistence, Merkle root, Ed25519 attestation, and receipt integration.
+- Ed25519 attestation/signatures, independent re-execution of submitted trajectories, and receipt integration.
 - Structured claims, deterministic evidence-span verification, local LLM synthesis, and Phoenix recursion.
 - Hybrid/reranking algorithms, learned optimization, remote vector stores, and all hosted inference providers.
 
@@ -73,12 +85,13 @@ L7 fusion:    4 trajectory artifacts, RRF constant 60
 
 The provider finished `MODEL_READY` with the pinned `Xenova/all-MiniLM-L6-v2` model, 384 dimensions, `runtime: wasm`, and observed browser cache presence. The top fusion artifact was the Bridge section, with layers `L1`, `L2`, `L4`, `L5`, and `L6`. This verifies that MIST core uses actual local vectors and persistent browser corpus data, not mocks or hosted inference.
 
-The final release gate passed with **212 tests passed and 1 expected skip**, plus TypeScript, Drizzle schema consistency, production build, and Git whitespace checks.
+The final release gate for the retrieval core passed with **212 tests passed and 1 expected skip**, plus TypeScript, Drizzle schema consistency, production build, and Git whitespace checks. The Merkle/persistence unit suite adds four passing tests covering canonicalization, odd-leaf handling, mutation sensitivity, and malformed-input rejection.
 
 ## Required validation
 
 ```bash
 pnpm vitest run server/mist-core.test.ts
+pnpm vitest run server/mist-trajectory.test.ts
 pnpm test
 pnpm check
 pnpm build

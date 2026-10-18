@@ -167,3 +167,38 @@ export const keiraAdaptationRecords = mysqlTable("keiraAdaptationRecords", {
 });
 export type KeiraAdaptationRecord = typeof keiraAdaptationRecords.$inferSelect;
 export type InsertKeiraAdaptationRecord = typeof keiraAdaptationRecords.$inferInsert;
+
+/** Durable MIST retrieval envelopes with a deterministic Merkle commitment. */
+export const keiraMistTrajectories = mysqlTable("keiraMistTrajectories", {
+  trajectoryId: varchar("trajectoryId", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull(),
+  schemaVersion: varchar("schemaVersion", { length: 32 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull(),
+  queryHash: varchar("queryHash", { length: 128 }).notNull(),
+  queryNormalized: text("queryNormalized").notNull(),
+  documentId: varchar("documentId", { length: 255 }),
+  indexingJson: text("indexingJson"),
+  layerSummaryJson: text("layerSummaryJson").notNull(),
+  merkleRoot: varchar("merkleRoot", { length: 128 }).notNull(),
+  leafCount: int("leafCount").notNull(),
+  rrfConstant: int("rrfConstant").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraMistTrajectory = typeof keiraMistTrajectories.$inferSelect;
+export type InsertKeiraMistTrajectory = typeof keiraMistTrajectories.$inferInsert;
+
+/** Immutable canonical leaf payloads committed by a durable MIST trajectory root. */
+export const keiraMistTrajectoryArtifacts = mysqlTable("keiraMistTrajectoryArtifacts", {
+  artifactId: varchar("artifactId", { length: 36 }).primaryKey(),
+  trajectoryId: varchar("trajectoryId", { length: 36 }).notNull(),
+  leafIndex: int("leafIndex").notNull(),
+  artifactCid: varchar("artifactCid", { length: 128 }).notNull(),
+  leafHash: varchar("leafHash", { length: 128 }).notNull(),
+  payloadJson: text("payloadJson").notNull(),
+  fusionRank: int("fusionRank").notNull(),
+  rrfScore: text("rrfScore").notNull(),
+  layerMembershipsJson: text("layerMembershipsJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraMistTrajectoryArtifact = typeof keiraMistTrajectoryArtifacts.$inferSelect;
+export type InsertKeiraMistTrajectoryArtifact = typeof keiraMistTrajectoryArtifacts.$inferInsert;

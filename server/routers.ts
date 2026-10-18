@@ -11,6 +11,8 @@ import {
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { portalChatRouter } from "./portal-chat-router";
+import { listMistTrajectories, persistMistTrajectory, readMistTrajectory } from "./mist-trajectory";
+import type { MistResult } from "../client/src/lib/mist/types";
 
 /**
  * Sovereign Portal API surface.
@@ -127,7 +129,21 @@ export const appRouter = router({
     }),
   }),
 
-  portal: router({ chat: portalChatRouter }),
+  portal: router({
+    chat: portalChatRouter,
+
+    persistMistTrajectory: protectedProcedure
+      .input(z.object({ result: z.unknown() }))
+      .mutation(async ({ ctx, input }) => persistMistTrajectory(ctx.user.id, input.result as MistResult)),
+
+    getMistTrajectory: protectedProcedure
+      .input(z.object({ trajectoryId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => readMistTrajectory(ctx.user.id, input.trajectoryId)),
+
+    listMistTrajectories: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }))
+      .query(async ({ ctx, input }) => listMistTrajectories(ctx.user.id, input.limit)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
