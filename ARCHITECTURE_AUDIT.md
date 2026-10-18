@@ -53,7 +53,7 @@ Drizzle ORM → MySQL/TiDB-compatible database
 
 ## Backend and API
 
-- `server/_core/index.ts` creates the Express server, applies security headers, parses JSON/urlencoded bodies, registers public REST-style health/identity endpoints, mounts `/api/trpc`, and selects Vite development middleware or static production serving.
+- `server/_core/index.ts` creates the Express server, applies security headers, streams lifecycle-managed model assets through the same-origin storage proxy, parses JSON/urlencoded bodies, registers public REST-style health/identity endpoints, mounts `/api/trpc`, and selects Vite development middleware or static production serving.
 - `server/routers.ts` composes auth procedures and `portalChatRouter`. Legacy/unused routers are intentionally not mounted in the active app router.
 - `server/_core/context.ts` authenticates requests through the sovereign SDK. When `BETA_OPEN_MODE=true` and no authenticated user exists, it obtains or creates the dedicated `beta@keira.local` non-owner user. Protected procedures still require `ctx.user`; they do not become public in the general case.
 - `server/_core/trpc.ts` defines `publicProcedure`, `protectedProcedure`, and `adminProcedure`. Admin access remains role-based (`role === 'admin'`).
@@ -108,7 +108,7 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | Local Ollama-compatible inference | Adapter exists; live endpoint unverified in this environment |
 | MIST L1–L7 retrieval | Not implemented as specified |
 | Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, and IndexedDB store; no upload UI, PDF parser, or retrieval index |
-| Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Provider contract and Transformers.js adapter implemented; live hosted-preview model loading blocked before vector execution |
+| Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Same-origin model and ONNX Runtime WASM assets packaged; live hosted-preview Chromium proof observed `MODEL_READY` with a finite 384-dimensional vector |
 | IndexedDB corpus persistence | Implemented adapter and API-contract tests; browser quota/eviction and UI acceptance remain unverified |
 | LanceDB-compatible abstraction | Not implemented |
 | Trajectory object and 30-artifact fusion | Not implemented |
@@ -122,8 +122,8 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | SSO / Meta-Bus / mesh integration | Not implemented; trusted mesh is explicitly not configured |
 | CORS allowlist | No explicit CORS middleware/allowlist found in the active server entrypoint |
 | Reverse proxy compatibility | Basic proxy trust and host/port behavior exist; Nginx/Caddy/TLS/Ollama path not live-verified here |
-| Acceptance suite | 201 tests passed with 1 expected RDS skip after Phase 2; MIST/Phoenix acceptance tests remain unimplemented |
+| Acceptance suite | Existing deterministic/provider tests remain the gate; Phase 3 browser proof passed; MIST/Phoenix acceptance tests remain unimplemented |
 
 ## Audit decision
 
-The least destructive next step is a **Phase 3 browser-local embedding compatibility proof**, not broad MIST implementation. Do not replace Portal Chat, APEX, the deterministic baseline, or the existing local gateway.
+The least destructive next step is to integrate the verified embedding provider with the existing browser-local CorpusStore, not to implement broad MIST behavior in one step. Do not replace Portal Chat, APEX, the deterministic baseline, or the existing local gateway.

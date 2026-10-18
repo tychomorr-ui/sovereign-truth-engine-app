@@ -1,6 +1,6 @@
 # KEIRA Deployment Audit
 
-**Audit phase:** Step 0 — inspection only  
+**Audit phase:** Step 0 with Phase 3 browser-runtime addendum
 **Audited commit:** `332f289`  
 **Current target:** Hosted Manus WebDev project, not Lightsail.
 
@@ -39,6 +39,7 @@ The project has been repeatedly validated in the hosted sandbox with a successfu
 | `/api/keira-identity/health` | Public-safe identity encryption readiness status |
 | `/.well-known/keira-identity.json` | Public KEIRA identity manifest/status |
 | `/.well-known/keira-receipt.json` | Public KEIRA identity receipt/status |
+| `/manus-storage/{key}` | Same-origin streaming proxy for lifecycle-managed model and ONNX WASM assets |
 | SSE/WebSocket | Not implemented/found in active server routes |
 | Browser → Ollama | Not used by current code; server-side fetch is used |
 
@@ -110,6 +111,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 - No Dockerfile or active container orchestration manifest was found.
 - Historical `deploy-lightsail.sh` is not the current hosted deployment mechanism.
 - The active server entrypoint is suitable for the hosted WebDev build contract.
+- The pinned MiniLM model files and ONNX Runtime WASM files are lifecycle-managed assets, not repository files in `client/public`; the server proxy streams them same-origin with range and content-type preservation.
 
 ## Deployment verification status
 
@@ -120,7 +122,8 @@ Drizzle migrations are part of the repository and current schema checks have pas
 | TypeScript | Proven | `pnpm check` passed in current release gate |
 | Existing tests | Proven | 191 passed, 1 expected skip at audited beta commit |
 | Database schema consistency | Previously proven for current release | Must rerun after future schema changes |
-| HTTPS hosted endpoint | Platform-managed/available through WebDev | Not a repository-owned reverse proxy |
+| `HTTPS hosted endpoint` | Platform-managed/available through WebDev | Not a repository-owned reverse proxy |
+| `Browser-local MiniLM embedding proof` | Proven | Chromium loaded same-origin model/WASM assets and observed `MODEL_READY`, finite 384-dimensional vector, and four cache entries |
 | Local Ollama live reachability | Unverified | Requires operator topology and endpoint configuration |
 | `10.9.0.1:11434` reachability from Manus | Not established | Do not claim connectivity |
 | CORS allowlist | Not implemented/verified | Same-origin only is the safe current assumption |
@@ -142,7 +145,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 1. Keep the current hosted beta mode only for controlled testing.
 2. Complete deterministic preservation baseline.
 3. Build and test browser-local corpus storage in isolation.
-4. Verify local embedding runtime and cache behavior.
+4. Keep the verified local embedding runtime and cache behavior as the gate for corpus integration.
 5. Implement MIST layers independently, then compose trajectory/fusion.
 6. Add backend-only trajectory attestation separate from KEIRA identity receipts.
 7. Add structured claim verification and bounded Phoenix recursion.

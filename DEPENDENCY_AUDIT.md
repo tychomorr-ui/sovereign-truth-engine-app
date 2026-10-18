@@ -20,7 +20,7 @@
 | Storage | Existing optional S3 SDK/presigner dependency; database persistence; Phase 2 browser-local IndexedDB corpus abstraction; no vector database |
 | Payments/other | Stripe package remains installed, but the active root router does not mount legacy payment routes |
 | Phase 2 test support | `fake-indexeddb` is a dev-only browser IndexedDB API shim; it is not a production datastore or service |
-| Phase 3 local embeddings | `@huggingface/transformers` 4.3.1 added for the browser-local ONNX/WASM proof; live model asset loading in the hosted preview is blocked and no successful vector is claimed |
+| Phase 3 local embeddings | `@huggingface/transformers` 4.3.1 with same-origin MiniLM model assets and ONNX Runtime WASM; live `MODEL_READY` proof passed |
 
 ## Current active intelligence dependencies
 
@@ -40,7 +40,7 @@ AWS SDK packages are present for optional S3/storage functionality. They are not
 
 **Status:** Installed at 4.3.1 for the Phase 3 proof.
 **Purpose:** Local embedding generation, target model `Xenova/all-MiniLM-L6-v2`.  
-**Compatibility result:** The provider contract and deterministic lifecycle tests pass. The actual hosted-preview browser call reached Transformers.js/ONNX Runtime Web but failed while loading model configuration because the browser received HTML instead of JSON; direct browser fetch also failed. No `MODEL_READY` or real vector was observed. Do not treat this dependency as a verified runtime until a same-origin asset package, explicit CORS path, or production-origin smoke test succeeds.
+**Compatibility result:** The provider contract and deterministic lifecycle tests pass. The hosted-preview browser proof loaded the pinned model configuration, tokenizer, quantized ONNX weights, and same-origin ONNX Runtime WASM assets, then observed `MODEL_READY` with a finite 384-dimensional normalized vector. Remote model loading is disabled. This verifies browser-local embedding execution in the hosted preview, but not production-origin or offline-restart behavior.
 
 ### `lancedb`
 
@@ -83,8 +83,8 @@ AWS SDK packages are present for optional S3/storage functionality. They are not
 ## Recommended dependency evaluation sequence
 
 1. Preserve current lockfile and run the existing suite.
-2. Re-run the isolated browser proof only after resolving the Phase 3 model-asset loading incompatibility, including model cache and offline behavior.
-3. Evaluate IndexedDB storage and schema versioning without MIST.
+2. Keep the verified same-origin embedding proof as the gate before integrating embeddings with the existing CorpusStore.
+3. Evaluate IndexedDB storage, quota/eviction, and schema versioning without MIST.
 4. Decide whether a logical Lance-compatible schema is enough; do not add LanceDB unless runtime compatibility is demonstrated.
 5. Add one dependency at a time with a focused test and bundle/build measurement.
 6. Keep all dependency changes additive and reversible.

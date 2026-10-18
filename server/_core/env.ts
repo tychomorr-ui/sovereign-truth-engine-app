@@ -17,6 +17,8 @@ export const ENV = {
   localLlmTopP: Number(process.env.LOCAL_LLM_TOP_P ?? 1),
   localLlmSeed: Number(process.env.LOCAL_LLM_SEED ?? 42),
   localLlmTimeoutMs: Number(process.env.LOCAL_LLM_TIMEOUT_MS ?? 60000),
+  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
+  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   portalS3Bucket: process.env.PORTAL_S3_BUCKET ?? "",
   portalS3Region: process.env.PORTAL_S3_REGION ?? "",
 };

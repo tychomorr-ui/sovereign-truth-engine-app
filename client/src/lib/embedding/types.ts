@@ -1,6 +1,23 @@
 export const DEFAULT_EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2" as const;
 export const DEFAULT_EMBEDDING_DIMENSION = 384 as const;
 export const TRANSFORMERS_BROWSER_CACHE = "transformers-cache" as const;
+export const DEFAULT_LOCAL_MODEL_REVISION = "751bff37182d3f1213fa05d7196b954e230abad9" as const;
+
+export const DEFAULT_LOCAL_MODEL_ASSETS = {
+  "config.json": "/manus-storage/config_30f06ef9.json",
+  "tokenizer.json": "/manus-storage/tokenizer_7a6eccad.json",
+  "tokenizer_config.json": "/manus-storage/tokenizer_config_8fd8bf88.json",
+  "special_tokens_map.json": "/manus-storage/special_tokens_map_258fe54e.json",
+  "vocab.txt": "/manus-storage/vocab_82956a99.txt",
+  "onnx/model_quantized.onnx": "/manus-storage/model_quantized_24f3cce9.onnx",
+} as const;
+
+export const DEFAULT_LOCAL_WASM_ASSETS = {
+  mjs: "/manus-storage/ort-wasm-simd-threaded.asyncify_bc27fa5b.mjs",
+  wasm: "/manus-storage/ort-wasm-simd-threaded.asyncify_e2a710ad.wasm",
+} as const;
+
+export type LocalModelAssetMap = Record<string, string>;
 
 export type EmbeddingProviderStatus =
   | "MODEL_NOT_INITIALIZED"

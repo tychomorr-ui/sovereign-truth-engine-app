@@ -8,5 +8,7 @@ describe("Portal Security & Sovereignty Audit", () => {
     expect(KEIRA_SECURITY_HEADERS["Content-Security-Policy"]).toContain("default-src 'self'");
     expect(KEIRA_SECURITY_HEADERS["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
     expect(KEIRA_SECURITY_HEADERS["Content-Security-Policy"]).toContain("object-src 'none'");
+    expect(KEIRA_SECURITY_HEADERS["Content-Security-Policy"]).toContain("'wasm-unsafe-eval'");
+    expect(KEIRA_SECURITY_HEADERS["Content-Security-Policy"]).not.toContain("'unsafe-eval'");
   });
 });

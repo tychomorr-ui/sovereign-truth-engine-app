@@ -14,6 +14,7 @@
 | `client/src/lib/trpc.ts` | Typed API client | All new server contracts should use this pattern | Preserve | Medium |
 | `client/src/index.css`, `client/src/components/*` | Existing visual system and reusable controls | Directive says preserve existing UI | Preserve | Medium |
 | `server/_core/index.ts` | Express startup, routes, Vite/static serving | Deployment/API boundary | Preserve except narrowly additive routes | High: port/startup failure causes deployment failure |
+| `server/_core/storageProxy.ts` | Same-origin streaming proxy for lifecycle-managed model/WASM assets | Browser-local runtime asset boundary | Additive | High: redirects to cross-origin signed URLs break browser CSP/CORS |
 | `server/_core/context.ts` | Authentication context and beta-open identity injection | Auth boundary | Preserve; beta flag must remain temporary | Critical: public access if beta remains enabled |
 | `server/_core/trpc.ts` | Public/protected/admin middleware | Authority boundary | Preserve | Critical |
 | `server/_core/env.ts` | Server environment mapping | New config must be explicit and server-only | Controlled extension only | High |
@@ -72,9 +73,11 @@ Explicitly deferred: PDF/OCR parsing, corpus UI, browser upload flow, MIST retri
 - `client/src/lib/embedding/types.ts` — provider-neutral contract, lifecycle, cache, and vector metadata.
 - `client/src/lib/embedding/transformersjs-provider.ts` — Transformers.js/ONNX Runtime Web adapter with no hosted fallback.
 - `server/local-embedding-provider.test.ts` — deterministic lifecycle, cache-observation, dimension, and failure tests.
-- `PHASE3_EMBEDDING_PROOF.md` — live browser evidence and incompatibility report.
+- `server/_core/storageProxy.ts` — same-origin byte-stream proxy with range/content-type preservation.
+- `server/_core/security-headers.ts` and `server/portal-security-audit.test.ts` — minimal CSP allowance for WebAssembly compilation without unrestricted JavaScript eval.
+- `PHASE3_EMBEDDING_PROOF.md` — live browser evidence and verified runtime boundary.
 
-Status: **browser model execution blocked and not claimed successful**. MIST remains deferred.
+Status: **verified browser-local model execution**. Same-origin model and ONNX Runtime WASM assets produced `MODEL_READY` and a finite 384-dimensional vector. MIST remains deferred.
 
 ### Phase 4 — embeddings and MIST
 

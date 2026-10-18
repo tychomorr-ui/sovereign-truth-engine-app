@@ -1,6 +1,9 @@
 import {
   DEFAULT_EMBEDDING_DIMENSION,
   DEFAULT_EMBEDDING_MODEL,
+  DEFAULT_LOCAL_MODEL_ASSETS,
+  DEFAULT_LOCAL_MODEL_REVISION,
+  DEFAULT_LOCAL_WASM_ASSETS,
   TRANSFORMERS_BROWSER_CACHE,
   type EmbeddingCacheStatus,
   type EmbeddingPipeline,
@@ -8,9 +11,10 @@ import {
   type EmbeddingProvider,
   type EmbeddingProviderMetadata,
   type EmbeddingRuntime,
+  type LocalModelAssetMap,
 } from "./types";
 
-const MODEL_VERSION = "onnx-feature-extraction-384";
+const MODEL_VERSION = `onnx-feature-extraction-384@${DEFAULT_LOCAL_MODEL_REVISION}`;
 
 async function observeCache(): Promise<{ status: EmbeddingCacheStatus; entries: number | null }> {
   if (typeof globalThis.caches === "undefined") return { status: "CACHE_UNAVAILABLE", entries: null };
@@ -23,13 +27,32 @@ async function observeCache(): Promise<{ status: EmbeddingCacheStatus; entries: 
   }
 }
 
-async function defaultPipelineFactory(model: string, runtime: EmbeddingRuntime): Promise<EmbeddingPipeline> {
+function createSameOriginAssetFetch(assetMap: LocalModelAssetMap): typeof fetch {
+  return async (input, init) => {
+    const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const pathname = new URL(requestUrl, globalThis.location?.origin ?? "http://localhost").pathname;
+    const asset = Object.keys(assetMap).find((candidate) => pathname.endsWith(`/${candidate}`) || pathname === `/${candidate}`);
+    if (!asset) throw new Error(`Local embedding asset is not allow-listed: ${pathname}`);
+    return fetch(assetMap[asset], init);
+  };
+}
+
+async function defaultPipelineFactory(
+  model: string,
+  runtime: EmbeddingRuntime,
+  assetMap: LocalModelAssetMap,
+  wasmAssets: { mjs: string; wasm: string },
+): Promise<EmbeddingPipeline> {
   const { env, pipeline } = await import("@huggingface/transformers");
-  env.allowRemoteModels = true;
+  env.allowRemoteModels = false;
   env.allowLocalModels = true;
+  env.localModelPath = "/keira-local-models/";
   env.useBrowserCache = true;
   env.useWasmCache = true;
   env.cacheKey = TRANSFORMERS_BROWSER_CACHE;
+  env.fetch = createSameOriginAssetFetch(assetMap);
+  if (!env.backends.onnx.wasm) throw new Error("ONNX WASM backend is unavailable.");
+  env.backends.onnx.wasm.wasmPaths = wasmAssets;
 
   const extractor = await pipeline("feature-extraction", model, {
     device: runtime,
@@ -57,10 +80,14 @@ export class TransformersJsEmbeddingProvider implements EmbeddingProvider {
   constructor(options: {
     model?: string;
     runtime?: EmbeddingRuntime;
+    assetMap?: LocalModelAssetMap;
+    wasmAssets?: { mjs: string; wasm: string };
     pipelineFactory?: EmbeddingPipelineFactory;
   } = {}) {
     const model = options.model ?? DEFAULT_EMBEDDING_MODEL;
     const runtime = options.runtime ?? "wasm";
+    const assetMap = options.assetMap ?? DEFAULT_LOCAL_MODEL_ASSETS;
+    const wasmAssets = options.wasmAssets ?? DEFAULT_LOCAL_WASM_ASSETS;
     this.state = {
       model,
       modelVersion: MODEL_VERSION,
@@ -73,7 +100,7 @@ export class TransformersJsEmbeddingProvider implements EmbeddingProvider {
       cacheEntriesAfterLoad: null,
       lastError: null,
     };
-    this.factory = options.pipelineFactory ?? (() => defaultPipelineFactory(model, runtime));
+    this.factory = options.pipelineFactory ?? (() => defaultPipelineFactory(model, runtime, assetMap, wasmAssets));
   }
 
   private readonly factory: EmbeddingPipelineFactory;
