@@ -76,6 +76,10 @@ Observed result:
 
 This is an actual browser-produced vector, not a mock pipeline result or a simulated cache claim. The observed vector was normalized and finite. The cache observation confirms that the browser cache received four model/runtime resources during initialization.
 
+## Corpus integration addendum
+
+The verified provider is now connected to KEIRA's browser-local IndexedDB `CorpusStore` through `LocalCorpusSimilarityService`. A second live browser proof indexed two Markdown chunks, persisted two model/version-bound 384-dimensional vectors, and ranked a `river water current` query by local cosine similarity: the `River` section scored `0.6947328116336847`; `Mountain` scored `0.06366552331276928`. This adds direct local semantic retrieval only; it is not MIST retrieval or Portal Chat augmentation.
+
 ## Tests and release evidence
 
 The deterministic provider contract suite contains four tests covering lifecycle, cache observation, dimension validation, non-finite rejection, empty input, initialization failure, and no-fallback behavior. The security audit suite additionally asserts that the CSP permits `'wasm-unsafe-eval'` without permitting `'unsafe-eval'`.

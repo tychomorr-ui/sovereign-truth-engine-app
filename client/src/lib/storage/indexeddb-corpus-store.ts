@@ -99,6 +99,14 @@ export class IndexedDbCorpusStore implements CorpusStore {
     return result as CorpusEmbedding | undefined;
   }
 
+  async listEmbeddings(): Promise<CorpusEmbedding[]> {
+    const database = await this.open();
+    const transaction = database.transaction(EMBEDDINGS, "readonly");
+    const embeddings = await requestAsPromise(transaction.objectStore(EMBEDDINGS).getAll());
+    await transactionDone(transaction);
+    return (embeddings as CorpusEmbedding[]).sort((left, right) => left.chunkCid.localeCompare(right.chunkCid));
+  }
+
   async getByCid(cid: string): Promise<CorpusChunk | undefined> {
     const database = await this.open();
     const transaction = database.transaction(CHUNKS, "readonly");

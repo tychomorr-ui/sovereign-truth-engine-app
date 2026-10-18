@@ -10,7 +10,7 @@
 
 KEIRA is an existing React/Vite + Express/tRPC + Drizzle/MySQL application whose active product surface is Portal Chat. It already contains a substantial local-first deterministic runtime: deterministic primitives, APEX CANONICAL orchestration, a sovereign capability bus, bounded reflection, provenance-aware memory abstractions, adaptive proposal controls, offline/degradation simulation, durable receipts, and an optional OpenAI-compatible local inference adapter supporting Ollama, llama.cpp, and vLLM-style endpoints.
 
-The attached MIST/Phoenix directive is **not implemented as a complete system**. Phase 2 now provides deterministic Markdown/TXT ingestion, token-aware chunking, SHA-256 content IDs, and browser-local IndexedDB storage behind a `CorpusStore` interface. It deliberately does not provide PDF parsing, a corpus UI, local embeddings, seven-layer MIST retrieval, trajectory attestation, structured claim verification, Phoenix retry loops, or XINUS Meta-Bus/SSO integration. Existing Ed25519 functionality is KEIRA's application identity receipt, not trajectory signing.
+The attached MIST/Phoenix directive is **not implemented as a complete system**. The corpus foundation now provides deterministic Markdown/TXT ingestion, token-aware chunking, SHA-256 content IDs, browser-local IndexedDB storage, and exact-provenance local cosine similarity retrieval through the verified MiniLM browser provider. It deliberately does not provide PDF parsing, a corpus UI, seven-layer MIST retrieval, trajectory attestation, structured claim verification, Phoenix retry loops, or XINUS Meta-Bus/SSO integration. Existing Ed25519 functionality is KEIRA's application identity receipt, not trajectory signing.
 
 The current application remains operational without a model through a transparent deterministic response path. The hosted project is currently in temporary beta-open mode: unauthenticated requests receive a dedicated non-owner beta user. This is a deliberate test configuration and must not be treated as production authentication.
 
@@ -107,7 +107,7 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | Preserve deterministic engine | Existing and tested |
 | Local Ollama-compatible inference | Adapter exists; live endpoint unverified in this environment |
 | MIST L1–L7 retrieval | Not implemented as specified |
-| Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, and IndexedDB store; no upload UI, PDF parser, or retrieval index |
+| Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, IndexedDB store, exact-model embedding persistence, and direct cosine similarity search; no upload UI, PDF parser, or MIST retrieval index |
 | Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Same-origin model and ONNX Runtime WASM assets packaged; live hosted-preview Chromium proof observed `MODEL_READY` with a finite 384-dimensional vector |
 | IndexedDB corpus persistence | Implemented adapter and API-contract tests; browser quota/eviction and UI acceptance remain unverified |
 | LanceDB-compatible abstraction | Not implemented |

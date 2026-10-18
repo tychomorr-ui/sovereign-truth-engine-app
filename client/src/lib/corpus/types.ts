@@ -89,6 +89,28 @@ export type CorpusSearchResult = {
   mode: "storage_lookup";
 };
 
+/** Browser-local semantic retrieval. Scores are cosine similarity in [-1, 1]. */
+export type CorpusSimilaritySearchQuery = CorpusSearchQuery & {
+  minScore?: number;
+};
+
+export type CorpusSimilaritySearchResult = {
+  artifact: CorpusArtifact;
+  score: number;
+  mode: "semantic_similarity";
+  embedding: Pick<CorpusEmbedding, "model" | "modelVersion">;
+};
+
+export type CorpusEmbeddingIndexResult = {
+  documentId: string | null;
+  scannedChunks: number;
+  indexedChunks: number;
+  reusedEmbeddings: number;
+  model: string;
+  modelVersion: string;
+  dimension: number;
+};
+
 export type CorpusStoreStats = {
   documents: number;
   chunks: number;

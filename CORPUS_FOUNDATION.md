@@ -1,7 +1,7 @@
 # KEIRA Corpus Foundation
 
 **Phase:** 2 — browser-local corpus storage
-**Status:** Implemented foundation; no MIST retrieval or embedding generation is claimed.
+**Status:** Phase 2 storage foundation implemented. Phase 3.5 now adds local embedding persistence and similarity retrieval; MIST remains unimplemented.
 
 ## What Phase 2 implements
 
@@ -30,14 +30,14 @@ server/corpus-foundation.test.ts
 
 - PDF parsing or OCR.
 - An upload page, corpus management route, or corpus UI.
-- Local embedding generation, Transformers.js, LanceDB, semantic search, centroid clustering, Echoes, Patterns, Arcana, fusion, or a MIST trajectory.
+- LanceDB, centroid clustering, Echoes, Patterns, Arcana, fusion, or a MIST trajectory. Local browser embeddings and direct cosine similarity retrieval are now implemented separately in `CORPUS_SIMILARITY_SEARCH.md`.
 - Merkle trajectory attestation, trajectory signing, Phoenix recursion, structured claim verification, or citation rendering.
 - Server-side corpus synchronization, remote storage, a vector database, or any hosted inference provider.
 - Physical browser storage-size measurement; `storageBytes` remains `null` rather than fabricating a value.
 
 ## Persistence and privacy model
 
-The `IndexedDbCorpusStore` is intended to run in the operator's browser. It performs no fetches, remote synchronization, model calls, or background uploads. Source text is normalized and chunked before it is stored. Embedding records have a place in the schema but are not created by Phase 2; the interface exists so a later **local-only** embedding phase can persist model/version provenance alongside vectors.
+The `IndexedDbCorpusStore` is intended to run in the operator's browser. It performs no fetches, remote synchronization, model calls, or background uploads. Source text is normalized and chunked before it is stored. Phase 3.5 uses the same store to persist local-only embedding records with model/version provenance; the storage adapter itself remains independent of model execution.
 
 The automated suite uses `fake-indexeddb` as a **development-only test shim**. It validates the Web API contract in Node but does not prove quota behavior, eviction behavior, or all browser-specific IndexedDB implementation details. Those remain browser acceptance tests for the corpus UI phase.
 
@@ -74,4 +74,4 @@ git diff --check
 
 ## Next compatible phase
 
-Phase 3 should prove a browser-compatible local embedding runtime and cache behavior in isolation. Do not connect embeddings to MIST, the active chat flow, or remote providers until that compatibility proof passes.
+The local embedding proof and direct corpus similarity integration are complete. The next compatible phase may add a separately specified retrieval layer, but must not silently couple it to MIST, the active chat flow, or remote providers.

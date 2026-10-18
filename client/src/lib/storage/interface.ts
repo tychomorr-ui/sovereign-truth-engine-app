@@ -17,6 +17,7 @@ export interface CorpusStore {
   putChunk(chunk: CorpusChunk): Promise<void>;
   putEmbedding(embedding: CorpusEmbedding): Promise<void>;
   getEmbedding(chunkCid: string): Promise<CorpusEmbedding | undefined>;
+  listEmbeddings(): Promise<CorpusEmbedding[]>;
   getByCid(cid: string): Promise<CorpusArtifact | undefined>;
   listDocuments(): Promise<CorpusDocument[]>;
   listChunks(documentId?: string): Promise<CorpusChunk[]>;

@@ -79,6 +79,15 @@ Explicitly deferred: PDF/OCR parsing, corpus UI, browser upload flow, MIST retri
 
 Status: **verified browser-local model execution**. Same-origin model and ONNX Runtime WASM assets produced `MODEL_READY` and a finite 384-dimensional vector. MIST remains deferred.
 
+### Phase 3.5 — local corpus similarity search
+
+- `client/src/lib/corpus/local-similarity.ts` — provider/store bridge that persists exact-provenance vectors and performs fail-closed cosine similarity ranking.
+- `client/src/lib/corpus/types.ts`, `client/src/lib/storage/interface.ts`, and `client/src/lib/storage/indexeddb-corpus-store.ts` — additive semantic result/index contracts and deterministic embedding enumeration.
+- `server/corpus-similarity.test.ts` — indexing, reuse, provenance isolation, malformed-vector, and empty-query coverage.
+- `CORPUS_SIMILARITY_SEARCH.md` — verified scope and explicit deferrals.
+
+Status: **implemented and test-covered**. This is local semantic retrieval over persisted chunks, not MIST L1-L7 or Portal Chat integration.
+
 ### Phase 4 — embeddings and MIST
 
 - `client/src/lib/mist/types.ts` and deterministic layer modules.

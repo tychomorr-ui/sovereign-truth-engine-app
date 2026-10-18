@@ -124,6 +124,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 | Database schema consistency | Previously proven for current release | Must rerun after future schema changes |
 | `HTTPS hosted endpoint` | Platform-managed/available through WebDev | Not a repository-owned reverse proxy |
 | `Browser-local MiniLM embedding proof` | Proven | Chromium loaded same-origin model/WASM assets and observed `MODEL_READY`, finite 384-dimensional vector, and four cache entries |
+| `Browser-local corpus similarity` | Proven | Chromium persisted two MiniLM vectors in IndexedDB and ranked a River query above Mountain by local cosine similarity |
 | Local Ollama live reachability | Unverified | Requires operator topology and endpoint configuration |
 | `10.9.0.1:11434` reachability from Manus | Not established | Do not claim connectivity |
 | CORS allowlist | Not implemented/verified | Same-origin only is the safe current assumption |
