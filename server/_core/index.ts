@@ -7,6 +7,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { KEIRA_SECURITY_HEADERS } from "./security-headers";
+import { getKeiraPublicIdentityStatus } from "../keira-identity-persistence";
+import { keiraIdentityRootSecretHealthHandler } from "../keira-identity-health";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +42,49 @@ async function startServer() {
   });
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
+  app.get("/api/keira-identity/health", keiraIdentityRootSecretHealthHandler);
+  // Public identity material contains KEIRA's public key and signed receipt only.
+  // It intentionally never creates keys, emits private material, or calls ARCHANGEL.
+  app.get("/.well-known/keira-identity.json", async (_req, res) => {
+    try {
+      const status = await getKeiraPublicIdentityStatus();
+      res.status(status.status === "RECEIPT_INVALID" ? 503 : 200).json({
+        application: "KEIRA",
+        status: status.status,
+        manifest: status.manifest,
+        verification: status.verification,
+        reason: status.reason,
+      });
+    } catch (error) {
+      res.status(503).json({
+        application: "KEIRA",
+        status: "RECEIPT_PENDING",
+        manifest: null,
+        verification: null,
+        reason: error instanceof Error ? error.message : "KEIRA identity status is unavailable.",
+      });
+    }
+  });
+  app.get("/.well-known/keira-receipt.json", async (_req, res) => {
+    try {
+      const status = await getKeiraPublicIdentityStatus();
+      res.status(status.status === "RECEIPT_ACTIVE" ? 200 : 503).json({
+        application: "KEIRA",
+        status: status.status,
+        receipt: status.receipt,
+        verification: status.verification,
+        reason: status.reason,
+      });
+    } catch (error) {
+      res.status(503).json({
+        application: "KEIRA",
+        status: "RECEIPT_PENDING",
+        receipt: null,
+        verification: null,
+        reason: error instanceof Error ? error.message : "KEIRA receipt is unavailable.",
+      });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",

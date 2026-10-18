@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as portalChat from "./portal-chat";
 import { retrieveUserContext, formatContextForLLM } from "./portal-context-retrieval";
 import { classifyLearningStage } from "./portal-stage-classifier";
@@ -35,6 +35,7 @@ import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
 import { runApexCanonical } from "./apex-canonical";
 import { getDegradationMatrix, OfflineResilienceController } from "./offline-resilience";
 import { runGovernedLocalGeneration } from "./governed-local-intelligence";
+import { getKeiraPublicIdentityStatus, issueKeiraIdentityReceipt } from "./keira-identity-persistence";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 const resilienceControllers = new Map<number, OfflineResilienceController>();
@@ -46,6 +47,14 @@ function getResilienceController(userId: number): OfflineResilienceController {
 
 export const portalChatRouter = router({
   getCapabilities: protectedProcedure.query(() => getKeiraCapabilities()),
+
+  getKeiraIdentityStatus: protectedProcedure.query(async () => getKeiraPublicIdentityStatus()),
+
+  // Identity issuance is consequential: only an authenticated KEIRA administrator can
+  // create a self-issued receipt. The endpoint never returns private key material.
+  issueKeiraIdentityReceipt: adminProcedure
+    .input(z.object({ confirm: z.literal(true) }))
+    .mutation(async () => issueKeiraIdentityReceipt()),
 
   getRuntimeStatus: protectedProcedure.query(async () => getRuntimeReport()),
 

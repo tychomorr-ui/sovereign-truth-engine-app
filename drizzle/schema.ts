@@ -117,6 +117,33 @@ export const keiraIntelligenceReceipts = mysqlTable("keiraIntelligenceReceipts",
 export type KeiraIntelligenceReceipt = typeof keiraIntelligenceReceipts.$inferSelect;
 export type InsertKeiraIntelligenceReceipt = typeof keiraIntelligenceReceipts.$inferInsert;
 
+/** KEIRA's application-specific public identity; the private key is encrypted at rest. */
+export const keiraIdentityKeys = mysqlTable("keiraIdentityKeys", {
+  keyId: varchar("keyId", { length: 96 }).primaryKey(),
+  algorithm: varchar("algorithm", { length: 32 }).notNull(),
+  publicKeyPem: text("publicKeyPem").notNull(),
+  publicKeyFingerprint: varchar("publicKeyFingerprint", { length: 128 }).notNull(),
+  encryptedPrivateKey: text("encryptedPrivateKey").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  retiredAt: timestamp("retiredAt"),
+});
+export type KeiraIdentityKey = typeof keiraIdentityKeys.$inferSelect;
+export type InsertKeiraIdentityKey = typeof keiraIdentityKeys.$inferInsert;
+
+/** Public-safe, self-issued identity receipts signed only by KEIRA's own keypair. */
+export const keiraIdentityReceipts = mysqlTable("keiraIdentityReceipts", {
+  receiptId: varchar("receiptId", { length: 36 }).primaryKey(),
+  keyId: varchar("keyId", { length: 96 }).notNull(),
+  manifestJson: text("manifestJson").notNull(),
+  canonicalManifestSha256: varchar("canonicalManifestSha256", { length: 128 }).notNull(),
+  signature: text("signature").notNull(),
+  verificationState: varchar("verificationState", { length: 64 }).notNull(),
+  issuedAt: timestamp("issuedAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraIdentityReceipt = typeof keiraIdentityReceipts.$inferSelect;
+export type InsertKeiraIdentityReceipt = typeof keiraIdentityReceipts.$inferInsert;
+
 /** Proposal-first adaptive behavior history; protected policy variables are never auto-mutated. */
 export const keiraAdaptationRecords = mysqlTable("keiraAdaptationRecords", {
   adaptationId: varchar("adaptationId", { length: 36 }).primaryKey(),

@@ -1,6 +1,7 @@
 export const ENV = {
   cookieSecret: process.env.JWT_SECRET ?? "",
   portalOwnerAccessToken: process.env.PORTAL_OWNER_ACCESS_TOKEN ?? "",
+  keiraIdentityRootSecret: process.env.KEIRA_IDENTITY_ROOT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
   isProduction: process.env.NODE_ENV === "production",
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
