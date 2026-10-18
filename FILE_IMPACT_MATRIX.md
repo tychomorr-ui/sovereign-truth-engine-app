@@ -65,12 +65,21 @@ Implemented browser-local foundation:
 - `server/corpus-foundation.test.ts` — ingestion and storage contract tests using a dev-only IndexedDB shim.
 - `CORPUS_FOUNDATION.md` — actual implementation boundary and required validation.
 
-Explicitly deferred: PDF/OCR parsing, corpus UI, browser upload flow, embeddings, LanceDB, remote persistence, database schema changes, and MIST retrieval.
+Explicitly deferred: PDF/OCR parsing, corpus UI, browser upload flow, MIST retrieval, and all later trajectory work. Phase 3 embedding proof is tracked below.
 
-### Phase 3/4 — embeddings and MIST
+### Phase 3 — browser-local embedding proof
+
+- `client/src/lib/embedding/types.ts` — provider-neutral contract, lifecycle, cache, and vector metadata.
+- `client/src/lib/embedding/transformersjs-provider.ts` — Transformers.js/ONNX Runtime Web adapter with no hosted fallback.
+- `server/local-embedding-provider.test.ts` — deterministic lifecycle, cache-observation, dimension, and failure tests.
+- `PHASE3_EMBEDDING_PROOF.md` — live browser evidence and incompatibility report.
+
+Status: **browser model execution blocked and not claimed successful**. MIST remains deferred.
+
+### Phase 4 — embeddings and MIST
 
 - `client/src/lib/mist/types.ts` and deterministic layer modules.
-- Local embedding adapter after browser/runtime compatibility is verified.
+- MIST retrieval only after a successful browser-local embedding proof.
 - Trajectory/fusion/Merkle modules.
 - Independent tests per layer and composed retrieval tests.
 

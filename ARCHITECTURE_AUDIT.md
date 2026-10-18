@@ -108,7 +108,7 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | Local Ollama-compatible inference | Adapter exists; live endpoint unverified in this environment |
 | MIST L1–L7 retrieval | Not implemented as specified |
 | Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, and IndexedDB store; no upload UI, PDF parser, or retrieval index |
-| Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Not installed or implemented |
+| Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Provider contract and Transformers.js adapter implemented; live hosted-preview model loading blocked before vector execution |
 | IndexedDB corpus persistence | Implemented adapter and API-contract tests; browser quota/eviction and UI acceptance remain unverified |
 | LanceDB-compatible abstraction | Not implemented |
 | Trajectory object and 30-artifact fusion | Not implemented |
