@@ -34,6 +34,7 @@ import { Streamdown } from "streamdown";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ingestTextDocument } from "../lib/corpus/ingest";
 import { TransformersJsEmbeddingProvider } from "../lib/embedding/transformersjs-provider";
+import { commitMistTrajectory, verifyStoredMerkleCommitment } from "../lib/mist/commitment";
 import { MistCore } from "../lib/mist/core";
 import { createPortalTrajectoryCorpusInput } from "../lib/mist/portal-trajectory";
 import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
@@ -191,6 +192,11 @@ export default function PortalChat() {
   const [showMistPanel, setShowMistPanel] = useState(false);
   const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
   const [mistStatus, setMistStatus] = useState<string | null>(null);
+  const [mistVerification, setMistVerification] = useState<{
+    status: "verified" | "mismatch" | "unavailable";
+    message: string;
+    computedRoot?: string;
+  } | null>(null);
   const [ledgerLabel, setLedgerLabel] = useState("");
   const [ledgerContent, setLedgerContent] = useState("");
   const [ledgerKind, setLedgerKind] = useState<ContextLedgerEntry["kind"]>("note");
@@ -522,6 +528,41 @@ export default function PortalChat() {
     } catch (error) {
       console.error("Failed to save MIST trajectory", error);
       setMistStatus(error instanceof Error ? `Trajectory unavailable: ${error.message}` : "Trajectory could not be saved.");
+    }
+  };
+
+  const handleReexecuteMistTrajectory = async () => {
+    if (!selectedMistTrajectory) return;
+    if (!selectedMistTrajectory.documentId) {
+      setMistVerification({ status: "unavailable", message: "This saved trajectory has no local document binding." });
+      return;
+    }
+
+    setMistVerification({ status: "unavailable", message: "Re-executing local MIST layers…" });
+    try {
+      const storedVerification = await verifyStoredMerkleCommitment(selectedMistTrajectory.merkle);
+      if (!storedVerification.valid) {
+        setMistVerification({ status: "mismatch", message: storedVerification.reason, computedRoot: selectedMistTrajectory.merkle.root });
+        return;
+      }
+
+      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
+      mistStoreRef.current = store;
+      const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
+      mistProviderRef.current = provider;
+      const result = await new MistCore(store, provider).retrieve(selectedMistTrajectory.queryNormalized, { documentId: selectedMistTrajectory.documentId });
+      const recomputed = await commitMistTrajectory(result);
+      const sameLeaves = recomputed.leafCount === selectedMistTrajectory.merkle.leafCount
+        && recomputed.leaves.every((leaf, index) => leaf.leafHash === selectedMistTrajectory.merkle.leaves[index]?.leafHash);
+      const verified = recomputed.root === selectedMistTrajectory.merkle.root && sameLeaves;
+      setMistVerification({
+        status: verified ? "verified" : "mismatch",
+        message: verified ? "Re-execution reproduced the saved Merkle root and every leaf hash." : "Re-execution produced a different trajectory commitment.",
+        computedRoot: recomputed.root,
+      });
+    } catch (error) {
+      console.error("Failed to re-execute MIST trajectory", error);
+      setMistVerification({ status: "unavailable", message: error instanceof Error ? error.message : "Local re-execution is unavailable." });
     }
   };
 
@@ -1069,6 +1110,8 @@ export default function PortalChat() {
                         <div className="text-[0.6rem] uppercase tracking-[0.18em] text-[#cbb8ff]">Selected commitment</div>
                         <div className="mt-2 break-all font-mono text-xs leading-5 text-[#8be9ff]">{selectedMistTrajectory.merkle.root}</div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><div className="text-[#737b8f]">Leaves</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.leafCount}</div></div><div><div className="text-[#737b8f]">Algorithm</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.algorithm}</div></div></div>
+                        <Button type="button" onClick={() => void handleReexecuteMistTrajectory()} disabled={mistVerification?.message === "Re-executing local MIST layers…"} className="mt-4 w-full rounded-none border border-[#6f55c7] bg-transparent text-[#cbb8ff] hover:bg-[#21154d]"><Activity className="mr-2 h-4 w-4" />{mistVerification?.message === "Re-executing local MIST layers…" ? "Re-executing…" : "Re-execute & verify root"}</Button>
+                        {mistVerification && <div className={`mt-3 border p-3 text-xs leading-5 ${mistVerification.status === "verified" ? "border-[#43d9b0] bg-[#0d302b] text-[#8ff5d5]" : mistVerification.status === "mismatch" ? "border-[#ff7f9f] bg-[#351526] text-[#ffb6c7]" : "border-[#6f55c7] bg-[#21154d]/50 text-[#d7c7ff]"}`} role="status"><div className="font-semibold uppercase tracking-[0.16em]">{mistVerification.status === "verified" ? "Root verified" : mistVerification.status === "mismatch" ? "Root mismatch" : "Verification pending"}</div><div className="mt-1">{mistVerification.message}</div>{mistVerification.computedRoot && mistVerification.computedRoot !== selectedMistTrajectory.merkle.root && <div className="mt-2 break-all font-mono text-[0.65rem]">Computed: {mistVerification.computedRoot}</div>}</div>}
                         <div className="mt-4 text-[0.6rem] uppercase tracking-[0.16em] text-[#737b8f]">Trajectory artifacts</div>
                         <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">{selectedMistTrajectory.merkle.leaves.map((leaf) => <div key={leaf.artifactCid} className="flex items-center justify-between gap-3 text-xs text-[#a6aec0]"><span className="truncate">{leaf.artifactCid}</span><span className="shrink-0 text-[#cbb8ff]">#{leaf.fusionRank}</span></div>)}</div>
                       </>
