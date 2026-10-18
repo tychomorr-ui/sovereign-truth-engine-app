@@ -9,6 +9,7 @@ import { serveStatic, setupVite } from "./vite";
 import { KEIRA_SECURITY_HEADERS } from "./security-headers";
 import { getKeiraPublicIdentityStatus } from "../keira-identity-persistence";
 import { keiraIdentityRootSecretHealthHandler } from "../keira-identity-health";
+import { betaOpenStatusHandler } from "../beta-open-status";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -42,6 +43,7 @@ async function startServer() {
   });
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
+  app.get("/api/beta-status", betaOpenStatusHandler);
   app.get("/api/keira-identity/health", keiraIdentityRootSecretHealthHandler);
   // Public identity material contains KEIRA's public key and signed receipt only.
   // It intentionally never creates keys, emits private material, or calls ARCHANGEL.
