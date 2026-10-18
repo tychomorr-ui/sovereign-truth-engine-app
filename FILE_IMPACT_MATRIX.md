@@ -51,7 +51,8 @@
 - `FILE_IMPACT_MATRIX.md` — created now.
 - `DEPENDENCY_AUDIT.md` — created now.
 - `DEPLOYMENT_AUDIT.md` — created now.
-- A deterministic baseline inventory/test report, exact filename to be chosen after approval.
+- `DETERMINISTIC_BASELINE.md` — preservation contract and required release commands.
+- `server/deterministic-preservation-baseline.test.ts` — cross-module deterministic regression tripwires.
 
 ### Phase 2 — corpus/storage foundation
 
