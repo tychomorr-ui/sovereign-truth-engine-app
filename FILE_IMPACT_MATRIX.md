@@ -43,7 +43,7 @@
 | `DEPLOYMENT.md` | Manus hosted deployment notes | Current deployment reference | Update only after deployment changes | Medium |
 | `KEIRA_SOVEREIGN_RUNTIME.md` | Existing runtime documentation | Must be updated only after verified implementation | Preserve until Phase 1+ | Low |
 
-## New files proposed by later phases (not created in Step 0)
+## Phase tracking and future file impact
 
 ### Phase 1 — preservation
 
@@ -56,13 +56,16 @@
 
 ### Phase 2 — corpus/storage foundation
 
-Likely server/client repository abstractions, subject to compatibility review:
+Implemented browser-local foundation:
 
-- `server/corpus/` or `shared/corpus/` typed artifact/document/chunk contracts.
-- `client/src/lib/storage/interface.ts`.
-- `client/src/lib/storage/indexeddb.ts`.
-- Corpus ingestion/parser/chunk/hash modules.
-- Additive Drizzle tables only if server persistence is selected; the directive prefers browser-local persistence.
+- `client/src/lib/corpus/types.ts` — versioned document, chunk, embedding, CID, metadata, and store contracts.
+- `client/src/lib/corpus/ingest.ts` — deterministic Markdown/TXT normalization, sectioning, token-aware chunking, and SHA-256 CIDs.
+- `client/src/lib/storage/interface.ts` — storage abstraction.
+- `client/src/lib/storage/indexeddb-corpus-store.ts` — IndexedDB implementation with cascading local deletion.
+- `server/corpus-foundation.test.ts` — ingestion and storage contract tests using a dev-only IndexedDB shim.
+- `CORPUS_FOUNDATION.md` — actual implementation boundary and required validation.
+
+Explicitly deferred: PDF/OCR parsing, corpus UI, browser upload flow, embeddings, LanceDB, remote persistence, database schema changes, and MIST retrieval.
 
 ### Phase 3/4 — embeddings and MIST
 

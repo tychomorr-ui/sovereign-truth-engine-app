@@ -17,8 +17,9 @@
 | Build | Vite frontend build plus esbuild server bundle to `dist/index.js` |
 | Auth/crypto | `jose`, Node crypto, existing sovereign auth/session helpers |
 | UI | Radix primitives, Lucide, Streamdown, Sonner, Framer Motion |
-| Storage | Existing optional S3 SDK/presigner dependency; database persistence; no corpus IndexedDB abstraction |
+| Storage | Existing optional S3 SDK/presigner dependency; database persistence; Phase 2 browser-local IndexedDB corpus abstraction; no vector database |
 | Payments/other | Stripe package remains installed, but the active root router does not mount legacy payment routes |
+| Phase 2 test support | `fake-indexeddb` is a dev-only browser IndexedDB API shim; it is not a production datastore or service |
 
 ## Current active intelligence dependencies
 
@@ -89,4 +90,4 @@ AWS SDK packages are present for optional S3/storage functionality. They are not
 
 ## Current audit verdict
 
-The current dependency set is sufficient for Step 1 preservation and the existing deterministic/local-model runtime. It is **not yet sufficient** for the directive’s MIST/corpus/embedding/Phoenix acceptance criteria. The missing capabilities should be added incrementally only after compatibility proofs, not through a broad install or uncontrolled rewrite.
+The current dependency set is sufficient for Step 1 preservation, the existing deterministic/local-model runtime, and the browser-local IndexedDB corpus foundation. It is **not yet sufficient** for the directive’s PDF parsing, MIST, embedding, trajectory attestation, or Phoenix acceptance criteria. The missing capabilities should be added incrementally only after compatibility proofs, not through a broad install or uncontrolled rewrite.

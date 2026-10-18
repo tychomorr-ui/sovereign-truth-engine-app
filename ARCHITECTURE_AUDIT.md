@@ -1,6 +1,6 @@
 # KEIRA Architecture Audit
 
-**Audit phase:** Step 0 — inspection only  
+**Audit phase:** Step 0 inspection with Phase 2 corpus-foundation addendum
 **Repository:** `sovereign-truth-engine-app`  
 **Commit audited:** `332f289` — temporary beta-open mode  
 **Audit date:** 2026-10-18  
@@ -10,7 +10,7 @@
 
 KEIRA is an existing React/Vite + Express/tRPC + Drizzle/MySQL application whose active product surface is Portal Chat. It already contains a substantial local-first deterministic runtime: deterministic primitives, APEX CANONICAL orchestration, a sovereign capability bus, bounded reflection, provenance-aware memory abstractions, adaptive proposal controls, offline/degradation simulation, durable receipts, and an optional OpenAI-compatible local inference adapter supporting Ollama, llama.cpp, and vLLM-style endpoints.
 
-The attached MIST/Phoenix directive is **not already implemented as a complete system**. The repository has no corpus ingestion pipeline, browser corpus store, embedding pipeline, seven-layer MIST retrieval trajectory, Merkle trajectory attestation, structured claim verifier, Phoenix retry loop, MIST UI, corpus UI, or XINUS Meta-Bus/SSO integration matching the directive. Existing Ed25519 functionality is KEIRA's application identity receipt, not trajectory signing.
+The attached MIST/Phoenix directive is **not implemented as a complete system**. Phase 2 now provides deterministic Markdown/TXT ingestion, token-aware chunking, SHA-256 content IDs, and browser-local IndexedDB storage behind a `CorpusStore` interface. It deliberately does not provide PDF parsing, a corpus UI, local embeddings, seven-layer MIST retrieval, trajectory attestation, structured claim verification, Phoenix retry loops, or XINUS Meta-Bus/SSO integration. Existing Ed25519 functionality is KEIRA's application identity receipt, not trajectory signing.
 
 The current application remains operational without a model through a transparent deterministic response path. The hosted project is currently in temporary beta-open mode: unauthenticated requests receive a dedicated non-owner beta user. This is a deliberate test configuration and must not be treated as production authentication.
 
@@ -107,9 +107,9 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | Preserve deterministic engine | Existing and tested |
 | Local Ollama-compatible inference | Adapter exists; live endpoint unverified in this environment |
 | MIST L1–L7 retrieval | Not implemented as specified |
-| Corpus upload/parse/chunk/hash/index | Not implemented as specified |
+| Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, and IndexedDB store; no upload UI, PDF parser, or retrieval index |
 | Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Not installed or implemented |
-| IndexedDB corpus persistence | Not implemented |
+| IndexedDB corpus persistence | Implemented adapter and API-contract tests; browser quota/eviction and UI acceptance remain unverified |
 | LanceDB-compatible abstraction | Not implemented |
 | Trajectory object and 30-artifact fusion | Not implemented |
 | Merkle trajectory attestation | Not implemented |
@@ -122,8 +122,8 @@ Operation receipts include policy, verification, locality, provider/model, conte
 | SSO / Meta-Bus / mesh integration | Not implemented; trusted mesh is explicitly not configured |
 | CORS allowlist | No explicit CORS middleware/allowlist found in the active server entrypoint |
 | Reverse proxy compatibility | Basic proxy trust and host/port behavior exist; Nginx/Caddy/TLS/Ollama path not live-verified here |
-| Acceptance suite | Existing 191-pass suite covers current runtime, not the directive’s corpus/MIST/Phoenix acceptance tests |
+| Acceptance suite | 201 tests passed with 1 expected RDS skip after Phase 2; MIST/Phoenix acceptance tests remain unimplemented |
 
 ## Audit decision
 
-The least destructive next step is **Phase 1 preservation**, not broad implementation: freeze the current deterministic behavior and add a documented baseline test inventory. After explicit approval, implement storage/corpus foundations separately from MIST composition. Do not replace Portal Chat, APEX, or the existing local gateway.
+The least destructive next step is a **Phase 3 browser-local embedding compatibility proof**, not broad MIST implementation. Do not replace Portal Chat, APEX, the deterministic baseline, or the existing local gateway.

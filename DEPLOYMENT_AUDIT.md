@@ -125,7 +125,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 | `10.9.0.1:11434` reachability from Manus | Not established | Do not claim connectivity |
 | CORS allowlist | Not implemented/verified | Same-origin only is the safe current assumption |
 | Nginx/Caddy/TLS proxy chain | Not verified in current target | Historical Lightsail docs are not evidence |
-| Corpus upload/corpus persistence | Not implemented | Directive Phase 2 required |
+| Corpus upload/corpus persistence | Browser-local IndexedDB foundation implemented and API-contract tested | No upload UI, PDF parser, or live browser acceptance yet |
 | MIST/Phoenix acceptance | Not implemented | Directive Phase 3+ required |
 
 ## Deployment risks
@@ -135,7 +135,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 3. A process-local queue and in-memory cMAP state are not safe assumptions under restart or multiple instances.
 4. Cross-origin scraper/API access is not configured with an explicit allowlist.
 5. The current public identity receipt is KEIRA identity provenance, not MIST trajectory attestation.
-6. The current application has no corpus/MIST deployment artifact or acceptance route.
+6. Corpus persistence has no UI/upload route or live browser quota/eviction verification; MIST deployment artifacts and acceptance routes do not yet exist.
 
 ## Recommended deployment sequence after audit approval
 
