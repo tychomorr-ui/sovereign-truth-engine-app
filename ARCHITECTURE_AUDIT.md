@@ -106,24 +106,24 @@ Operation receipts include policy, verification, locality, provider/model, conte
 |---|---|
 | Preserve deterministic engine | Existing and tested |
 | Local Ollama-compatible inference | Adapter exists; live endpoint unverified in this environment |
-| MIST L1–L7 retrieval | Not implemented as specified |
-| Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, IndexedDB store, exact-model embedding persistence, and direct cosine similarity search; no upload UI, PDF parser, or MIST retrieval index |
+| MIST L1–L7 retrieval | Implemented as a browser-local deterministic core: lexical, semantic, centroid, Echoes, Patterns, Arcana, and RRF fusion over the CorpusStore/EmbeddingProvider abstractions; no UI/chat integration |
+| Corpus upload/parse/chunk/hash/index | Partially implemented: Markdown/TXT module ingestion, token-aware chunks, hashes/CIDs, IndexedDB store, exact-model embedding persistence, direct cosine similarity search, and MIST core; no upload UI or PDF parser |
 | Local embeddings (`Xenova/all-MiniLM-L6-v2`) | Same-origin model and ONNX Runtime WASM assets packaged; live hosted-preview Chromium proof observed `MODEL_READY` with a finite 384-dimensional vector |
 | IndexedDB corpus persistence | Implemented adapter and API-contract tests; browser quota/eviction and UI acceptance remain unverified |
 | LanceDB-compatible abstraction | Not implemented |
-| Trajectory object and 30-artifact fusion | Not implemented |
+| Trajectory object and 30-artifact fusion | Implemented as an in-memory `MistResult` trajectory with bounded RRF fusion; no durable persistence, Merkle root, or signature |
 | Merkle trajectory attestation | Not implemented |
 | Trajectory Ed25519 signing | Not implemented; identity receipt is separate |
 | Structured claim extraction/verifier | Not implemented as the required MIST-bound contract |
 | Phoenix maximum-three-pass recursion | Existing bounded reflection is not Phoenix and lacks corpus claim retry semantics |
-| Echoes/Patterns/Arcana/Trajectory UI | Existing visual labels/cards exist, but not backed by MIST layer outputs |
+| Echoes/Patterns/Arcana/Trajectory UI | Existing visual labels/cards exist, but are not wired to MIST layer outputs in this phase |
 | Corpus UI | Not implemented |
 | Operator LLM settings UI | Existing profile controls exist; required endpoint/model settings surface is not confirmed as implemented |
 | SSO / Meta-Bus / mesh integration | Not implemented; trusted mesh is explicitly not configured |
 | CORS allowlist | No explicit CORS middleware/allowlist found in the active server entrypoint |
 | Reverse proxy compatibility | Basic proxy trust and host/port behavior exist; Nginx/Caddy/TLS/Ollama path not live-verified here |
-| Acceptance suite | Existing deterministic/provider tests remain the gate; Phase 3 browser proof passed; MIST/Phoenix acceptance tests remain unimplemented |
+| Acceptance suite | Deterministic MIST-core tests and a live browser MiniLM/IndexedDB proof passed; Phoenix/attestation acceptance tests remain unimplemented |
 
 ## Audit decision
 
-The least destructive next step is to integrate the verified embedding provider with the existing browser-local CorpusStore, not to implement broad MIST behavior in one step. Do not replace Portal Chat, APEX, the deterministic baseline, or the existing local gateway.
+The least destructive next step after this bounded MIST core is to design trajectory persistence and Merkle/attestation separately. Do not replace Portal Chat, APEX, the deterministic baseline, or the existing local gateway.

@@ -90,10 +90,12 @@ Status: **implemented and test-covered**. This is local semantic retrieval over 
 
 ### Phase 4 — embeddings and MIST
 
-- `client/src/lib/mist/types.ts` and deterministic layer modules.
-- MIST retrieval only after a successful browser-local embedding proof.
-- Trajectory/fusion/Merkle modules.
-- Independent tests per layer and composed retrieval tests.
+- `client/src/lib/mist/types.ts` — typed MIST result, layer, candidate, fusion, and in-memory trajectory contracts.
+- `client/src/lib/mist/core.ts` — deterministic L1 lexical, L2 semantic, L3 centroids, L4 Echoes, L5 Patterns, L6 Arcana, and L7 RRF fusion over the existing local corpus/embedding abstractions.
+- `server/mist-core.test.ts` — complete-layer, deterministic reuse, empty-corpus, and unavailable-embedding tests.
+- `MIST_CORE.md` — documented constants, failure semantics, browser proof, and deferred work.
+
+Status: **implemented and browser-proven**. The core emits an in-memory bounded RRF trajectory only; Merkle, persistence, attestation, signatures, UI binding, and Phoenix remain deferred.
 
 ### Phase 5/7 — attestation and Phoenix
 

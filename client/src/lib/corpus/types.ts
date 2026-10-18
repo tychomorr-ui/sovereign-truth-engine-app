@@ -41,7 +41,7 @@ export type CorpusChunk = {
   schemaVersion: typeof CORPUS_SCHEMA_VERSION;
 };
 
-/** MIST will add layer membership and trajectory data in a later phase. */
+/** MIST consumes immutable corpus chunks and emits layer/trajectory data separately. */
 export type CorpusArtifact = CorpusChunk;
 
 /** Embeddings are stored separately from source chunks and are not generated in Phase 2. */
