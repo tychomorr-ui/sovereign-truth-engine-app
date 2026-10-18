@@ -35,6 +35,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ingestTextDocument } from "../lib/corpus/ingest";
 import { TransformersJsEmbeddingProvider } from "../lib/embedding/transformersjs-provider";
 import { MistCore } from "../lib/mist/core";
+import { createPortalTrajectoryCorpusInput } from "../lib/mist/portal-trajectory";
 import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
 
 type LearningStage = "awakening" | "exploration" | "integration" | "mastery" | "resistance";
@@ -508,16 +509,7 @@ export default function PortalChat() {
       const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
       mistProviderRef.current = provider;
       const conversation = conversations.find((item) => item.id === activeConversationId);
-      const corpus = await ingestTextDocument({
-        filename: `portal-conversation-${activeConversationId}.txt`,
-        mimeType: "text/plain",
-        title: conversation?.title ?? "Portal conversation",
-        source: "portal-chat",
-        role: "dialogue",
-        scope: "operator-local",
-        tags: ["portal", "conversation", String(activeConversationId)],
-        content: messages.map((message) => `${message.role === "user" ? "Operator" : "KEIRA"}: ${message.content}`).join("\n\n"),
-      });
+      const corpus = await ingestTextDocument(createPortalTrajectoryCorpusInput(activeConversationId, conversation?.title, messages));
       await store.putDocument(corpus.document);
       await Promise.all(corpus.chunks.map((chunk) => store.putChunk(chunk)));
 
