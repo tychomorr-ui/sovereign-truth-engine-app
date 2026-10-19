@@ -18,6 +18,7 @@ import {
 } from "./keira-response-controls";
 import { assembleMinimumContext, createMemoryObject, type ContextAssembly } from "./memory-fabric";
 import { runBoundedReflection, type BoundedReflectionResult } from "./reflection-engine";
+import { ENV } from "./_core/env";
 
 export interface AdaptiveResponse {
   strategy: DialogueStrategy;
@@ -91,7 +92,7 @@ export async function generateAdaptiveResponse(
       requested: "local_model",
       operation: "portal.conversation.generate",
       contextSources: ["conversation-history", "learning-profile", ...memoryAssembly.suppliedMemoryIds.map((id) => `memory:${id}`), ...memoryAssembly.unavailable.map((item) => `unavailable:${item}`)],
-      maxTokens: 4096,
+      maxTokens: Math.max(256, Math.min(ENV.localLlmMaxTokens, 2048)),
       temperature: normalizedVariation,
       topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
     });
