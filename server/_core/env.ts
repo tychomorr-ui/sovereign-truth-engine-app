@@ -8,9 +8,12 @@ export const ENV = {
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
   awsSessionToken: process.env.AWS_SESSION_TOKEN ?? "",
-  localLlmBaseUrl: process.env.LOCAL_LLM_BASE_URL ?? "",
-  localLlmRuntime: process.env.LOCAL_LLM_RUNTIME ?? "ollama",
-  localLlmModel: process.env.LOCAL_LLM_MODEL ?? "qwen2.5:3b",
+  // LOCAL_LLM_* remains the canonical internal name; KEIRA_LLM_* aliases make
+  // the production deployment contract explicit without exposing anything to
+  // the browser.
+  localLlmBaseUrl: process.env.LOCAL_LLM_BASE_URL?.trim() || process.env.KEIRA_LLM_ENDPOINT?.trim() || "",
+  localLlmRuntime: process.env.LOCAL_LLM_RUNTIME?.trim() || process.env.KEIRA_LLM_RUNTIME?.trim() || "ollama",
+  localLlmModel: process.env.LOCAL_LLM_MODEL?.trim() || process.env.KEIRA_LLM_MODEL?.trim() || "qwen2.5:3b",
   localLlmApiKey: process.env.LOCAL_LLM_API_KEY ?? "",
   localLlmMaxTokens: Number(process.env.LOCAL_LLM_MAX_TOKENS ?? 4096),
   localLlmTemperature: Number(process.env.LOCAL_LLM_TEMPERATURE ?? 0),

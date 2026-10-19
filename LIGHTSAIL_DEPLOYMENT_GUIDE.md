@@ -30,8 +30,8 @@ sudo npm install -g pnpm
 
 ## 3. Clone Repository & Install Dependencies
 ```bash
-# Clone the dedicated KEIRA repository over HTTPS
-git clone https://github.com/tychomorr-ui/keira.git keira
+# Clone the audit-ready KEIRA repository over HTTPS
+git clone https://github.com/tychomorr-ui/sovereign-truth-engine-app.git keira
 cd keira
 
 # Install exactly the dependency graph committed with KEIRA
@@ -41,32 +41,40 @@ pnpm install --frozen-lockfile
 ---
 
 ## 4. Configure Production Environment Variables
-Create a `.env` file in the project root:
+Create a `.env` file in the project root. This application expects a MySQL 8-compatible database through `mysql2`; SQLite and PostgreSQL URLs are not supported by the current Drizzle schema.
 ```env
 NODE_ENV=production
+HOST=127.0.0.1
 PORT=3210
-DATABASE_URL=mysql://portal_user:replace-with-rds-password@portal-db-01.replace-with-rds-endpoint:3306/portal_db
+DATABASE_URL=mysql://keira_user:replace-with-password@127.0.0.1:3306/keira
 JWT_SECRET=replace-with-a-long-random-32-plus-character-secret
 PORTAL_OWNER_ACCESS_TOKEN=replace-with-a-long-random-owner-access-token
+BETA_OPEN_MODE=false
 
-# Primary Amazon Bedrock authentication: a Bedrock bearer token/API key.
-BEDROCK_API_KEY=replace-with-your-bedrock-bearer-token
-BEDROCK_REGION=sa-east-1
-BEDROCK_MODEL_ID=anthropic.claude-opus-5
-BEDROCK_MAX_TOKENS=4096
-BEDROCK_TEMPERATURE=0.1
+# KEIRA's encrypted, database-persisted Ed25519 identity key protection.
+# Use a unique random value of at least 32 characters. Do not paste a PEM here.
+KEIRA_IDENTITY_ROOT_SECRET=replace-with-a-random-32-plus-character-secret
 
-# Required for encrypted transcript exports. Use the name of an actual S3 bucket,
-# not the RDS instance identifier, and make sure the KEIRA runtime can access it.
-PORTAL_S3_BUCKET=replace-with-your-s3-bucket-name
-PORTAL_S3_REGION=sa-east-1
+# Server-only Ollama connection over WireGuard. The browser never calls this URL.
+KEIRA_LLM_RUNTIME=ollama
+KEIRA_LLM_ENDPOINT=http://10.9.0.1:11434/v1
+KEIRA_LLM_MODEL=llama3.2:3b
+LOCAL_LLM_API_KEY=
+LOCAL_LLM_MAX_TOKENS=4096
+LOCAL_LLM_TEMPERATURE=0
+LOCAL_LLM_TOP_P=1
+LOCAL_LLM_SEED=42
+LOCAL_LLM_TIMEOUT_MS=60000
 
-# Alternative to BEDROCK_API_KEY: use an attached Lightsail instance role or IAM
-# access keys with Bedrock and S3 permissions. Do not set both unless intended.
-# AWS_ACCESS_KEY_ID=...
-# AWS_SECRET_ACCESS_KEY=...
-# AWS_SESSION_TOKEN=... # only for temporary IAM credentials
+# Optional object storage for transcript exports.
+PORTAL_S3_BUCKET=
+PORTAL_S3_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SESSION_TOKEN=
 ```
+
+`LOCAL_LLM_BASE_URL` and `LOCAL_LLM_MODEL` remain supported as canonical internal aliases. `KEIRA_PRIVATE_KEY` is not consumed by the current production signer: trajectory reports are signed with KEIRA's encrypted identity key stored in the database, protected by `KEIRA_IDENTITY_ROOT_SECRET`. Do not put a PEM private key in Git, browser code, or exported reports.
 
 Protect the local file and never commit it:
 ```bash

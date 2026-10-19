@@ -1,8 +1,8 @@
 # KEIRA Deployment Audit
 
 **Audit phase:** Step 0 with Phase 3 browser-runtime addendum
-**Audited commit:** `332f289`  
-**Current target:** Hosted Manus WebDev project, not Lightsail.
+**Audited commit:** `2cfc56c`
+**Current target:** Ubuntu production server behind Nginx, with hosted WebDev retained as the validated preview.
 
 ## Current hosted deployment model
 
@@ -58,7 +58,9 @@ Observed server environment mappings include:
 - `PORTAL_OWNER_ACCESS_TOKEN` — owner bootstrap secret.
 - `KEIRA_IDENTITY_ROOT_SECRET` — server-only encryption root for KEIRA's private identity key.
 - `BETA_OPEN_MODE` — temporary beta-open switch.
-- `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_RUNTIME`, `LOCAL_LLM_MODEL`, `LOCAL_LLM_API_KEY`, and local generation limits — optional local inference configuration.
+- `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_RUNTIME`, `LOCAL_LLM_MODEL`, `LOCAL_LLM_API_KEY`, and local generation limits — canonical local inference configuration.
+- `KEIRA_LLM_ENDPOINT`, `KEIRA_LLM_RUNTIME`, and `KEIRA_LLM_MODEL` — accepted production aliases for the local inference configuration; the requested Singapore values target Ollama over WireGuard.
+- `KEIRA_PRIVATE_KEY` — not consumed by the current signer; production signing uses the encrypted database-persisted identity key protected by `KEIRA_IDENTITY_ROOT_SECRET`.
 - `PORTAL_S3_BUCKET`, `PORTAL_S3_REGION`, and AWS credentials — optional storage path.
 
 No secret values are committed in the repository. Browser-exposed Vite variables must be treated separately from server-only environment variables.
@@ -78,7 +80,7 @@ GET  <base>/models
 POST <base>/chat/completions
 ```
 
-The attached directive proposes `http://10.9.0.1:11434/v1` for production. That address is not verified reachable from the Manus WebDev environment and should be treated as an unverified future topology. The correct development state is local-model unavailable or unverified, not fabricated health.
+The production directive proposes `http://10.9.0.1:11434/v1`. It is not reachable from the Manus WebDev environment and remains unverified until tested from the Singapore host. The correct pre-deployment state is local-model unavailable or unverified, not fabricated health.
 
 The expected future topology is:
 
@@ -129,7 +131,8 @@ Drizzle migrations are part of the repository and current schema checks have pas
 | `Durable MIST trajectory persistence` | Implemented | Protected tRPC persist/read/list procedures, additive MySQL tables, transactional envelope-plus-leaf writes, and user scoping |
 | `MIST Merkle commitment` | Unit-proven | Canonical SHA-256 leaves, deterministic odd-node duplication, stable roots, and malformed-input rejection; no Ed25519 attestation claim |
 | Local Ollama live reachability | Unverified | Requires operator topology and endpoint configuration |
-| `10.9.0.1:11434` reachability from Manus | Not established | Do not claim connectivity |
+| `10.9.0.1:11434` reachability from Manus | Not applicable | Test from the Singapore host, not the hosted sandbox |
+| `10.9.0.1:11434` reachability from Singapore | Pending operator deployment | Verify WireGuard route, `/v1/models`, and `/v1/chat/completions` |
 | CORS allowlist | Not implemented/verified | Same-origin only is the safe current assumption |
 | Nginx/Caddy/TLS proxy chain | Not verified in current target | Historical Lightsail docs are not evidence |
 | Corpus upload/corpus persistence | Browser-local IndexedDB foundation implemented and API-contract tested | No upload UI, PDF parser, or live browser acceptance yet |
@@ -154,5 +157,5 @@ Drizzle migrations are part of the repository and current schema checks have pas
 6. Add backend-only trajectory attestation separate from KEIRA identity receipts.
 7. Add structured claim verification and bounded Phoenix recursion.
 8. Add explicit CORS allowlist only when a real cross-origin client is required.
-9. Configure and live-test the private Ollama route in the actual production topology.
+9. Configure and live-test the private Ollama route in the actual Singapore production topology.
 10. Disable beta-open mode, run full acceptance, and only then publish as a public production service.
