@@ -72,7 +72,7 @@ export function deterministicResponse(request: LocalGatewayRequest): LocalGatewa
       "",
       "No local language model is configured, so I will not simulate one. I can still help by structuring the request, identifying assumptions, and defining the next verifiable step.",
       "",
-      "Suggested next step: configure a self-hosted OpenAI-compatible endpoint if you want generative local inference (for example Ollama at http://127.0.0.1:11434/v1), then retry this message.",
+      "Suggested next step: configure the server-side KEIRA_LLM_ENDPOINT and KEIRA_LLM_MODEL for your reachable local Ollama or other OpenAI-compatible runtime, then retry this message. The browser will never call the model endpoint directly.",
     ].join("\n");
   }
 
