@@ -207,3 +207,20 @@ export const keiraMistTrajectoryArtifacts = mysqlTable("keiraMistTrajectoryArtif
 });
 export type KeiraMistTrajectoryArtifact = typeof keiraMistTrajectoryArtifacts.$inferSelect;
 export type InsertKeiraMistTrajectoryArtifact = typeof keiraMistTrajectoryArtifacts.$inferInsert;
+
+/** Durable Phase 5–10 Boomerang swarm result with server-side attestation metadata. */
+export const keiraBoomerangTrajectories = mysqlTable("keiraBoomerangTrajectories", {
+  trajectoryId: varchar("trajectoryId", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull(),
+  schemaVersion: varchar("schemaVersion", { length: 48 }).notNull(),
+  queryHash: varchar("queryHash", { length: 128 }).notNull(),
+  merkleRoot: varchar("merkleRoot", { length: 128 }).notNull(),
+  resultJson: text("resultJson").notNull(),
+  attestationAlgorithm: varchar("attestationAlgorithm", { length: 32 }),
+  signatureHex: text("signatureHex"),
+  pubkeyHex: varchar("pubkeyHex", { length: 128 }),
+  keyId: varchar("keyId", { length: 96 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraBoomerangTrajectory = typeof keiraBoomerangTrajectories.$inferSelect;
+export type InsertKeiraBoomerangTrajectory = typeof keiraBoomerangTrajectories.$inferInsert;

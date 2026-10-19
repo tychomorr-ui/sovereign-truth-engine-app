@@ -104,11 +104,12 @@ export async function runBoomerangSwarm(
   const globalFusion: GlobalFusionArtifact[] = Array.from(aggregate.entries())
     .map(([artifactCid, value]) => ({ artifact: candidateMap.get(artifactCid)!.artifact, weightedRrfScore: value.score / (BOOMERANG_RRF_CONSTANT + value.envelopeCount), agentIds: Array.from(value.agentIds).sort(), coreAgentIds: Array.from(value.coreAgentIds).sort(), envelopeCount: value.envelopeCount, rank: 0 }))
     .sort((left, right) => right.weightedRrfScore - left.weightedRrfScore || left.artifact.cid.localeCompare(right.artifact.cid))
+    .slice(0, 30)
     .map((item, index) => ({ ...item, rank: index + 1 }));
   const root = await merkleRoot(globalFusion.map((item) => ({ artifact_cid: item.artifact.cid, rank: item.rank, weighted_rrf_score: item.weightedRrfScore })));
 
   return {
-    schemaVersion: "2.0.0-phase4",
+    schemaVersion: "2.0.0-phase10",
     queryHash,
     agents,
     verifiedEnvelopes,

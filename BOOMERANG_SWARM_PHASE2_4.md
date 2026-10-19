@@ -18,6 +18,6 @@ The implementation was checked against `tychomorr-ui/pharo-lapse`, especially it
 
 `server/boomerang-phase1.test.ts` and `server/boomerang-phase234.test.ts` cover deterministic manifold selection, bounded traversal, cryptochrome repeatability, role distinction, asymmetric non-reentry, digestive deduplication, core tagging, envelope tamper rejection, three-agent orchestration, weighted fusion, and stable Merkle roots. Focused Phase 1–4 tests and TypeScript validation pass.
 
-## Explicitly deferred
+## Historical boundary
 
-The envelopes currently provide SHA-256 integrity only. Server-side Ed25519 attestation must use KEIRA’s existing durable identity signer and should be added only when the swarm result is connected to an auditable export or receipt boundary. Database persistence, UI visualizer wiring, live mesh transport, durable Pharo-Lapse queues, peer-registry validation, and network-level route forwarding are not claimed by these phases.
+At the time of the Phase 2–4 checkpoint, envelopes provided SHA-256 integrity only and persistence/UI/attestation were deferred. Those capabilities are now implemented in `BOOMERANG_SWARM_PHASE5_10.md`. Live mesh transport, durable Pharo-Lapse queues, peer-registry validation, and network-level route forwarding remain outside KEIRA’s local-first runtime.

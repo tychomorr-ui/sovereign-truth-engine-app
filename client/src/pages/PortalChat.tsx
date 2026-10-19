@@ -38,6 +38,9 @@ import { commitMistTrajectory, createMerkleVerificationReport, verifyStoredMerkl
 import { MistCore } from "../lib/mist/core";
 import { createPortalTrajectoryCorpusInput } from "../lib/mist/portal-trajectory";
 import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
+import { runBoomerangSwarm } from "../lib/boomerang/swarm";
+import type { BoomerangSwarmResult, ManifoldCandidate } from "../lib/boomerang/types";
+import { BoomerangRadar } from "../components/BoomerangRadar";
 
 type LearningStage = "awakening" | "exploration" | "integration" | "mastery" | "resistance";
 type DialogueStrategy = "informative" | "socratic" | "prophetic" | "forensic" | "catalytic";
@@ -198,6 +201,7 @@ export default function PortalChat() {
     message: string;
     computedRoot?: string;
   } | null>(null);
+  const [boomerangResult, setBoomerangResult] = useState<BoomerangSwarmResult | null>(null);
   const [ledgerLabel, setLedgerLabel] = useState("");
   const [ledgerContent, setLedgerContent] = useState("");
   const [ledgerKind, setLedgerKind] = useState<ContextLedgerEntry["kind"]>("note");
@@ -269,6 +273,11 @@ export default function PortalChat() {
     { enabled: isAuthenticated && showMistPanel },
   );
   const persistMistTrajectoryMutation = trpc.portal.persistMistTrajectory.useMutation();
+  const persistBoomerangTrajectoryMutation = trpc.portal.persistBoomerangTrajectory.useMutation();
+  const boomerangHistoryQuery = trpc.portal.listBoomerangTrajectories.useQuery(
+    { limit: 12 },
+    { enabled: isAuthenticated && showMistPanel },
+  );
   const attachMistAttestationMutation = trpc.portal.chat.attachMistAttestation.useMutation();
   const mistStoreRef = useRef<IndexedDbCorpusStore | null>(null);
   const mistProviderRef = useRef<TransformersJsEmbeddingProvider | null>(null);
@@ -346,6 +355,12 @@ export default function PortalChat() {
       setSelectedMistTrajectoryId(mistHistoryQuery.data[0].trajectoryId);
     }
   }, [showMistPanel, selectedMistTrajectoryId, mistHistoryQuery.data]);
+
+  useEffect(() => {
+    if (showMistPanel && !boomerangResult && boomerangHistoryQuery.data?.[0]) {
+      setBoomerangResult(boomerangHistoryQuery.data[0]);
+    }
+  }, [showMistPanel, boomerangResult, boomerangHistoryQuery.data]);
 
   const establishOwnerSession = async () => {
     setAuthError(null);
@@ -519,7 +534,21 @@ export default function PortalChat() {
       const result = await new MistCore(store, provider).retrieve(query, { documentId: corpus.document.id });
       const persisted = await persistMistTrajectoryMutation.mutateAsync({ result });
       setSelectedMistTrajectoryId(persisted.trajectoryId);
-      setMistStatus(`Trajectory saved · ${persisted.merkle.leafCount} leaves · SHA-256 root committed.`);
+      const chunks = await store.listChunks(corpus.document.id);
+      const chunksByCid = new Map(chunks.map((chunk) => [chunk.cid, chunk]));
+      const candidates: ManifoldCandidate[] = (await store.listEmbeddings())
+        .filter((embedding) => chunksByCid.has(embedding.chunkCid) && embedding.vector.length > 0 && embedding.vector.every(Number.isFinite))
+        .map((embedding) => ({ artifact: chunksByCid.get(embedding.chunkCid)!, vector: [...embedding.vector] }));
+      if (candidates.length) {
+        setMistStatus("MIST committed · launching bounded Boomerang return waves…");
+        const swarm = await runBoomerangSwarm(result.query.hash, result.query.hash, candidates);
+        const durableSwarm = await persistBoomerangTrajectoryMutation.mutateAsync({ result: swarm });
+        setBoomerangResult(durableSwarm);
+        setMistStatus(`MIST + Boomerang committed · ${durableSwarm.globalFusion.length} fused artifacts · Ed25519 attestation active.`);
+        await boomerangHistoryQuery.refetch();
+      } else {
+        setMistStatus(`Trajectory saved · ${persisted.merkle.leafCount} leaves · Boomerang unavailable: no local embedding candidates.`);
+      }
       await mistHistoryQuery.refetch();
     } catch (error) {
       console.error("Failed to save MIST trajectory", error);
@@ -1137,6 +1166,7 @@ export default function PortalChat() {
                   </Button>
                 </div>
                 {mistStatus && <p className="mt-3 text-xs text-[#8be9ff]" role="status">{mistStatus}</p>}
+                {boomerangResult && <div className="mt-4"><BoomerangRadar result={boomerangResult} /></div>}
                 <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {mistHistoryQuery.isFetching && <p className="text-xs text-[#737b8f]">Loading saved trajectories…</p>}

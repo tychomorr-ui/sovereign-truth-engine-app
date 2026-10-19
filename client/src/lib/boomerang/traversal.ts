@@ -119,7 +119,7 @@ export function traverseBoomerangAgent(options: SwarmTraversalOptions): SwarmAge
   }
   if (!terminationReason) terminationReason = outboundVisitedCids.length / options.candidates.length >= coverageThreshold ? "COVERAGE_THRESHOLD" : "MAX_HOPS";
   return {
-    schemaVersion: "2.0.0-phase4",
+    schemaVersion: "2.0.0-phase10",
     agentId: options.agentId,
     role: options.role,
     phase: "COMPLETE",

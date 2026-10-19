@@ -99,13 +99,16 @@ Status: **implemented and test-covered**. This is local semantic retrieval over 
 - `server/routers.ts` — protected persist/read/list procedures under `portal`.
 - `MIST_CORE.md` — documented constants, failure semantics, browser proof, and deferred work.
 
-Status: **implemented and browser-proven**. The core emits a bounded RRF trajectory and the protected server handoff durably stores its canonical Merkle commitment. Independent re-execution, Ed25519 attestation, signatures, UI binding, and Phoenix remain deferred.
+Status: **implemented and browser-proven**. The core emits a bounded RRF trajectory and the protected server handoff durably stores its canonical Merkle commitment. Independent re-execution, signed MIST reports, verifier UI, and real-data visualizer binding are implemented. Phoenix remains deferred.
 
-### Phase 5/7 — attestation and Phoenix
+### Phase 5–10 — Boomerang Swarm completion
 
-- Backend-only trajectory signing endpoint and schema-validated attestation envelope.
-- Structured claim types, evidence-span resolver, verifier, recursion signals, and terminal `UNRESOLVED` state.
-- These must not reuse KEIRA identity receipts as trajectory signatures.
+- `client/src/lib/boomerang/*` — bounded three-agent traversal, digestive envelopes, top-30 weighted fusion, deterministic Merkle commitment, and attestation-ready result contract.
+- `server/boomerang-persistence.ts`, `server/boomerang-phase5-10.test.ts`, and `BOOMERANG_SWARM_PHASE5_10.md` — canonical server persistence, durable Ed25519 signing through KEIRA’s existing identity, and acceptance coverage.
+- `drizzle/schema.ts`, `drizzle/0017_pale_gorgon.sql`, and `drizzle/meta/0017_snapshot.json` — additive durable Boomerang result table.
+- `client/src/components/BoomerangRadar.tsx` and `client/src/pages/PortalChat.tsx` — real-data orbital visualizer and local MIST-to-Boomerang handoff.
+
+Status: **implemented and test-covered**. Mesh transport, peer registries, and Phoenix remain deferred.
 
 ### Phase 8 — UI intelligence surfaces
 

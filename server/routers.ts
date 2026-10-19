@@ -13,6 +13,8 @@ import * as db from "./db";
 import { portalChatRouter } from "./portal-chat-router";
 import { listMistTrajectories, persistMistTrajectory, readMistTrajectory } from "./mist-trajectory";
 import type { MistResult } from "../client/src/lib/mist/types";
+import { listBoomerangTrajectories, persistBoomerangTrajectory, readBoomerangTrajectory } from "./boomerang-persistence";
+import type { BoomerangSwarmResult } from "../client/src/lib/boomerang/types";
 
 /**
  * Sovereign Portal API surface.
@@ -143,6 +145,18 @@ export const appRouter = router({
     listMistTrajectories: protectedProcedure
       .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }))
       .query(async ({ ctx, input }) => listMistTrajectories(ctx.user.id, input.limit)),
+
+    persistBoomerangTrajectory: protectedProcedure
+      .input(z.object({ result: z.unknown() }))
+      .mutation(async ({ ctx, input }) => persistBoomerangTrajectory(ctx.user.id, input.result as BoomerangSwarmResult)),
+
+    getBoomerangTrajectory: protectedProcedure
+      .input(z.object({ trajectoryId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => readBoomerangTrajectory(ctx.user.id, input.trajectoryId)),
+
+    listBoomerangTrajectories: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).default(24) }))
+      .query(async ({ ctx, input }) => listBoomerangTrajectories(ctx.user.id, input.limit)),
   }),
 });
 

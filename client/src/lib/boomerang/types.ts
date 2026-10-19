@@ -1,6 +1,6 @@
 import type { CorpusArtifact } from "../corpus/types";
 
-export const BOOMERANG_SCHEMA_VERSION = "2.0.0-phase4" as const;
+export const BOOMERANG_SCHEMA_VERSION = "2.0.0-phase10" as const;
 export const BOOMERANG_DEFAULT_MAX_HOPS = 12 as const;
 export const BOOMERANG_DEFAULT_COVERAGE_THRESHOLD = 0.7 as const;
 export const BOOMERANG_NEIGHBOR_SIMILARITY_THRESHOLD = 0.6 as const;
@@ -101,5 +101,14 @@ export type BoomerangSwarmResult = {
   globalFusion: GlobalFusionArtifact[];
   merkleRoot: string;
   agentSignatureScheme: "SHA-256-INTEGRITY-ONLY";
-  serverAttestation: "PENDING_SERVER_ED25519";
+  serverAttestation: "PENDING_SERVER_ED25519" | "ED25519_ATTESTED";
+  serverSignatureHex?: string;
+  serverPubkeyHex?: string;
+  serverKeyId?: string;
+};
+
+export type PersistedBoomerangTrajectory = BoomerangSwarmResult & {
+  trajectoryId: string;
+  userId: number;
+  createdAt: string | Date;
 };

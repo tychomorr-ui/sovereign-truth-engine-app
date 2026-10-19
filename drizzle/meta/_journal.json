@@ -120,6 +120,13 @@
       "when": 1792370733678,
       "tag": "0016_real_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1792373367206,
+      "tag": "0017_pale_gorgon",
+      "breakpoints": true
     }
   ]
 }
