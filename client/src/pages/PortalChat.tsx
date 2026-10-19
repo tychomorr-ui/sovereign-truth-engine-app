@@ -188,6 +188,7 @@ export default function PortalChat() {
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [showThreads, setShowThreads] = useState(false);
   const [showContextPanel, setShowContextPanel] = useState(false);
@@ -658,6 +659,7 @@ export default function PortalChat() {
 
     const userMessage = inputValue.trim();
     setInputValue("");
+    setSendError(null);
     setIsLoading(true);
 
     try {
@@ -669,6 +671,7 @@ export default function PortalChat() {
       await Promise.all([conversationQuery.refetch(), learningProfileQuery.refetch()]);
     } catch (error) {
       console.error("Failed to send KEIRA message", error);
+      setSendError(error instanceof Error ? error.message : "KEIRA could not complete the request.");
     } finally {
       setIsLoading(false);
     }
@@ -1368,6 +1371,11 @@ export default function PortalChat() {
             </div>
 
             <div className="border-t border-[#1a2240] py-4">
+              {sendError && (
+                <div className="mb-3 border border-[#7f3348] bg-[#24101a] px-3 py-2 text-xs leading-5 text-[#ffb4c0]" role="alert">
+                  KEIRA could not complete that response: {sendError}
+                </div>
+              )}
               <div className="flex items-end gap-3">
                 <Button type="button" aria-label={isListening ? "Stop listening" : "Speak a message"} onClick={toggleListening} disabled={activeConversationId === null || isLoading} className={`h-12 w-12 shrink-0 rounded-none border border-[#273865] p-0 ${isListening ? "bg-[#21154d] text-[#cbb8ff] shadow-[0_0_22px_rgba(139,92,246,0.35)]" : "bg-transparent text-[#8be9ff] hover:bg-[#101a32]"}`}><Mic className="h-4 w-4" /></Button>
                 <Input
