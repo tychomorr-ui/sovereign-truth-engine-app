@@ -1,6 +1,6 @@
 # Boomerang Swarm v2 — Phase 1
 
-**Status:** Implemented as a deterministic, browser-local traversal substrate wrapped around the existing MIST v1 engine. MIST itself was not reordered or modified.
+**Status:** Implemented as the deterministic, browser-local traversal substrate wrapped around the existing MIST v1 engine. The subsequent cryptochrome, return, digestive, and swarm-fusion work is documented in `BOOMERANG_SWARM_PHASE2_4.md`. MIST itself was not reordered or modified.
 
 ## Implemented
 
