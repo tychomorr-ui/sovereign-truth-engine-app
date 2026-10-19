@@ -177,9 +177,9 @@ export default function PortalChat() {
   const loginMutation = trpc.auth.login.useMutation();
   const ownerBootstrapMutation = trpc.auth.ownerBootstrap.useMutation();
   const profileMutation = trpc.auth.updateProfile.useMutation();
-  const [authEmail, setAuthEmail] = useState("tycole716@gmail.com");
+  const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-  const [authName, setAuthName] = useState("Tyler Morris");
+  const [authName, setAuthName] = useState("");
   const [ownerToken, setOwnerToken] = useState("");
   const [authMode, setAuthMode] = useState<"owner" | "login" | "register">("owner");
   const [authError, setAuthError] = useState<string | null>(null);
@@ -751,7 +751,7 @@ export default function PortalChat() {
                 className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
               >
                 {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                Enter as Tyler Morris
+                Enter with owner key
               </Button>
               <button
                 type="button"
@@ -807,7 +807,7 @@ export default function PortalChat() {
                 className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
               >
                 {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                Sign in as Tyler Morris
+                Sign in
               </Button>
               <button
                 type="button"
