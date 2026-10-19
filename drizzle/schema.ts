@@ -20,6 +20,7 @@ export const users = mysqlTable("users", {
   customPersona: text("customPersona"),
   customInstructions: text("customInstructions"),
   modelTemperature: int("modelTemperature").default(20).notNull(),
+  fastMode: int("fastMode").default(0).notNull(),
   predictiveSensitivity: int("predictiveSensitivity").default(75).notNull(),
   responseObjective: mysqlEnum("responseObjective", ["direct", "analysis", "creative", "plan"]).default("direct").notNull(),
   contextCarryover: mysqlEnum("contextCarryover", ["minimal", "standard", "extended"]).default("standard").notNull(),
@@ -65,6 +66,20 @@ export type InsertPortalChatMessage = typeof portalChatMessages.$inferInsert;
 export const portalLearningMemory = mysqlTable("portalLearningMemory", { id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull().unique(), corePatterns: text("corePatterns").notNull(), growthAreas: text("growthAreas").notNull(), resistancePoints: text("resistancePoints").notNull(), breakthroughMoments: text("breakthroughMoments"), evolutionTimeline: text("evolutionTimeline"), lastAnalyzedAt: timestamp("lastAnalyzedAt"), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull() });
 export type PortalLearningMemory = typeof portalLearningMemory.$inferSelect;
 export type InsertPortalLearningMemory = typeof portalLearningMemory.$inferInsert;
+
+/** User-scoped local inference cache; keyed by canonical query and trajectory context. */
+export const keiraResponseCache = mysqlTable("keiraResponseCache", {
+  cacheKey: varchar("cacheKey", { length: 128 }).primaryKey(),
+  userId: int("userId").notNull(),
+  queryHash: varchar("queryHash", { length: 64 }).notNull(),
+  trajectoryRootCid: varchar("trajectoryRootCid", { length: 128 }),
+  response: longtext("response").notNull(),
+  model: varchar("model", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraResponseCache = typeof keiraResponseCache.$inferSelect;
+export type InsertKeiraResponseCache = typeof keiraResponseCache.$inferInsert;
+
 export const keiraContextEntries = mysqlTable("keiraContextEntries", { id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull(), label: varchar("label", { length: 120 }).notNull(), content: text("content").notNull(), kind: mysqlEnum("kind", ["fact", "preference", "goal", "note"]).default("note").notNull(), isActive: int("isActive").default(1).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull() });
 export type KeiraContextEntry = typeof keiraContextEntries.$inferSelect;
 export type InsertKeiraContextEntry = typeof keiraContextEntries.$inferInsert;

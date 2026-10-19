@@ -91,6 +91,7 @@ type MessageMetadata = {
   contextCarryover?: ContextCarryover;
   carryoverMessages?: number;
   qualityContract?: string;
+  cached?: boolean;
   cmap?: CmapState;
   receipt?: { receipt_id: string; intelligence_mode: string; provider: string | null; model: string | null; external_service_used: boolean; data_left_local_node: boolean; result_state: string };
 };
@@ -224,6 +225,7 @@ export default function PortalChat() {
     customPersona: "",
     customInstructions: "",
     modelTemperature: 10,
+    fastMode: false,
     predictiveSensitivity: 75,
     responseObjective: "direct" as ResponseObjective,
     contextCarryover: "standard" as ContextCarryover,
@@ -330,6 +332,7 @@ export default function PortalChat() {
         customPersona: user.customPersona ?? "",
         customInstructions: user.customInstructions ?? "",
         modelTemperature: user.modelTemperature ?? 10,
+        fastMode: user.fastMode === 1,
         predictiveSensitivity: user.predictiveSensitivity ?? 75,
         responseObjective: user.responseObjective ?? "direct",
         contextCarryover: user.contextCarryover ?? "standard",
@@ -418,6 +421,7 @@ export default function PortalChat() {
         customPersona: profileDraft.customPersona || null,
         customInstructions: profileDraft.customInstructions || null,
         modelTemperature: profileDraft.modelTemperature,
+        fastMode: profileDraft.fastMode ? 1 : 0,
         predictiveSensitivity: profileDraft.predictiveSensitivity,
         responseObjective: profileDraft.responseObjective,
         contextCarryover: profileDraft.contextCarryover,
@@ -668,7 +672,7 @@ export default function PortalChat() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify({ conversationId: activeConversationId, message: userMessage }),
+        body: JSON.stringify({ conversationId: activeConversationId, message: userMessage, trajectoryRootCid: selectedMistTrajectory?.merkle.root }),
       });
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => null) as { error?: string } | null;
@@ -1211,6 +1215,7 @@ export default function PortalChat() {
                   <textarea aria-label="KEIRA instructions" value={profileDraft.customInstructions} onChange={(event) => setProfileDraft((draft) => ({ ...draft, customInstructions: event.target.value }))} placeholder="Optional instructions for how KEIRA should answer you..." className="min-h-24 rounded-none border border-[#273865] bg-[#0d1630] p-3 text-sm leading-6 text-[#f4f4f5] outline-none placeholder:text-[#687aa8] focus:border-[#8be9ff] md:col-span-2" />
                   <label className="flex items-center gap-2 text-xs text-[#a6aec0]">Response variation <input aria-label="Response variation" type="range" min="0" max="100" value={profileDraft.modelTemperature} onChange={(event) => setProfileDraft((draft) => ({ ...draft, modelTemperature: Number(event.target.value) }))} /></label>
                   <label className="flex items-center gap-2 text-xs text-[#a6aec0]">Context sensitivity <input aria-label="Context sensitivity" type="range" min="0" max="100" value={profileDraft.predictiveSensitivity} onChange={(event) => setProfileDraft((draft) => ({ ...draft, predictiveSensitivity: Number(event.target.value) }))} /></label>
+                  <label className="flex items-center gap-2 rounded-none border border-[#273865] bg-[#0d1630] px-3 py-2 text-xs text-[#a6aec0] md:col-span-2"><input aria-label="Fast Mode (Fallback Model)" type="checkbox" checked={profileDraft.fastMode} onChange={(event) => setProfileDraft((draft) => ({ ...draft, fastMode: event.target.checked }))} /> Fast Mode (Fallback Model)</label>
                   <label className="text-xs text-[#a6aec0]">Response objective<select aria-label="Response objective" value={profileDraft.responseObjective} onChange={(event) => setProfileDraft((draft) => ({ ...draft, responseObjective: event.target.value as typeof draft.responseObjective }))} className="mt-1 block h-10 w-full border border-[#273865] bg-[#0d1630] px-3 text-sm text-[#f4f4f5] outline-none focus:border-[#8be9ff]"><option value="direct">Direct answer</option><option value="analysis">Deep analysis</option><option value="creative">Creative exploration</option><option value="plan">Implementation plan</option></select></label>
                   <label className="text-xs text-[#a6aec0]">Conversation carryover<select aria-label="Conversation carryover" value={profileDraft.contextCarryover} onChange={(event) => setProfileDraft((draft) => ({ ...draft, contextCarryover: event.target.value as typeof draft.contextCarryover }))} className="mt-1 block h-10 w-full border border-[#273865] bg-[#0d1630] px-3 text-sm text-[#f4f4f5] outline-none focus:border-[#8be9ff]"><option value="minimal">Minimal · 2 prior messages</option><option value="standard">Standard · 6 prior messages</option><option value="extended">Extended · 12 prior messages</option></select></label>
                   <p className="text-xs leading-5 text-[#737b8f] md:col-span-2">The objective changes KEIRA’s local instruction contract. Carryover controls the exact number of prior messages sent with the next prompt; it does not create hidden memory or live research access.</p>
@@ -1325,6 +1330,7 @@ export default function PortalChat() {
                 {lastMessageMetadata?.responseObjective && <span>Objective / {lastMessageMetadata.responseObjective}</span>}
                 {lastMessageMetadata?.contextCarryover && <span>Carryover / {lastMessageMetadata.carryoverMessages ?? 0} prior messages</span>}
                 {lastMessageMetadata?.qualityContract && <span className="text-[#8be9ff]" title={lastMessageMetadata.qualityContract}>Contract / explicit bounds</span>}
+                {lastMessageMetadata?.cached && <span className="text-[#f6d37a]">[CACHED RESPONSE]</span>}
                 {lastMessageMetadata?.stageTransition && <span className="text-[#e8ddff]">Transition / {lastMessageMetadata.stageTransition}</span>}
               </div>
             )}

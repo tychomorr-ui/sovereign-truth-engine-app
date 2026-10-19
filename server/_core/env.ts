@@ -16,6 +16,8 @@ export const ENV = {
   localLlmModel: process.env.LOCAL_LLM_MODEL?.trim() || process.env.KEIRA_LLM_MODEL?.trim() || "qwen2.5:3b",
   localLlmApiKey: process.env.LOCAL_LLM_API_KEY ?? "",
   localLlmMaxTokens: Number(process.env.LOCAL_LLM_MAX_TOKENS ?? 4096),
+  localLlmNumCtx: Number(process.env.LOCAL_LLM_NUM_CTX ?? 2048),
+  localLlmFallbackModel: process.env.LOCAL_LLM_FALLBACK_MODEL?.trim() || process.env.KEIRA_LLM_FALLBACK_MODEL?.trim() || "",
   localLlmTemperature: Number(process.env.LOCAL_LLM_TEMPERATURE ?? 0),
   localLlmTopP: Number(process.env.LOCAL_LLM_TOP_P ?? 1),
   localLlmSeed: Number(process.env.LOCAL_LLM_SEED ?? 42),

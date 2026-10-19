@@ -123,6 +123,7 @@ export async function updateUserProfile(id: number, input: {
   customPersona?: string | null;
   customInstructions?: string | null;
   modelTemperature?: number;
+  fastMode?: number;
   predictiveSensitivity?: number;
 }) {
   const database = await getDb();

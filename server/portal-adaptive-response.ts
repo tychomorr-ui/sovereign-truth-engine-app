@@ -55,6 +55,7 @@ export async function generateAdaptiveResponse(
   recentMessages: Array<{ role: 'user' | 'portal'; content: string }>,
   responseVariation?: number,
   onToken?: (token: string) => void,
+  modelOptions?: { model?: string; fallbackModel?: string },
 ): Promise<AdaptiveResponse> {
   try {
     const contextLedger = ((context as any).contextLedger ?? []) as Array<{ label: string; content: string; kind: string }>;
@@ -97,6 +98,8 @@ export async function generateAdaptiveResponse(
         maxTokens: Math.max(256, Math.min(ENV.localLlmMaxTokens, 2048)),
         temperature: normalizedVariation,
         topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
+        model: modelOptions?.model,
+        fallbackModel: modelOptions?.fallbackModel,
       }, onToken)
       : await routeLocalConversation({
       system: systemPrompt,
@@ -107,6 +110,7 @@ export async function generateAdaptiveResponse(
       maxTokens: Math.max(256, Math.min(ENV.localLlmMaxTokens, 2048)),
       temperature: normalizedVariation,
       topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
+      model: modelOptions?.model,
     });
     if (!localResult.value) throw new Error(localResult.reason ?? "No local capability available.");
     const reflection = runBoundedReflection({

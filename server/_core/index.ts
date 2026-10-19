@@ -58,6 +58,7 @@ async function startServer() {
     }
     const conversationId = Number(req.body?.conversationId);
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const trajectoryRootCid = typeof req.body?.trajectoryRootCid === "string" ? req.body.trajectoryRootCid.trim() : undefined;
     if (!Number.isInteger(conversationId) || conversationId < 1 || !message) {
       res.status(400).json({ error: "conversationId and message are required." });
       return;
@@ -71,7 +72,7 @@ async function startServer() {
       res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
     };
     try {
-      const result = await streamPortalMessage(context.user.id, conversationId, message, (token) => writeEvent("token", { token }));
+      const result = await streamPortalMessage(context.user.id, conversationId, message, (token) => writeEvent("token", { token }), trajectoryRootCid);
       writeEvent("done", result);
     } catch (error) {
       writeEvent("error", { error: error instanceof Error ? error.message : "KEIRA could not complete the request." });

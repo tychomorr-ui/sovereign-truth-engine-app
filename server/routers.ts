@@ -96,6 +96,7 @@ export const appRouter = router({
         customPersona: z.string().trim().max(1000).nullable().optional(),
         customInstructions: z.string().trim().max(2000).nullable().optional(),
         modelTemperature: z.number().int().min(0).max(100).optional(),
+        fastMode: z.number().int().min(0).max(1).optional(),
         predictiveSensitivity: z.number().int().min(0).max(100).optional(),
         responseObjective: z.enum(["direct", "analysis", "creative", "plan"]).optional(),
         contextCarryover: z.enum(["minimal", "standard", "extended"]).optional(),

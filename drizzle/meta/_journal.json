@@ -134,6 +134,13 @@
       "when": 1792373715373,
       "tag": "0018_complete_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1792437989145,
+      "tag": "0019_young_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

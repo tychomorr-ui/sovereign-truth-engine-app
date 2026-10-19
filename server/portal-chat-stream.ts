@@ -10,6 +10,9 @@ import { initializecMAPSession, processcMAPMessage, extractLivingContext } from 
 import { updateMissionState, type MissionState } from "./cmap-handshake";
 import { getCarryoverMessageLimit, resolveContextCarryover } from "./keira-response-controls";
 import { persistReceipt } from "./keira-durable-memory";
+import { createReceipt } from "./sovereign-bus";
+import { hashResponseRequest, readCachedResponse, writeCachedResponse } from "./response-cache";
+import { ENV } from "./_core/env";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -18,6 +21,7 @@ export async function streamPortalMessage(
   conversationId: number,
   message: string,
   onToken: (token: string) => void,
+  trajectoryRootCid?: string,
 ) {
   await portalChat.addMessage(conversationId, userId, "user", message);
 
@@ -35,6 +39,7 @@ export async function streamPortalMessage(
     customPersona: userRecord[0].customPersona,
     customInstructions: userRecord[0].customInstructions,
     modelTemperature: userRecord[0].modelTemperature,
+    fastMode: userRecord[0].fastMode,
     predictiveSensitivity: userRecord[0].predictiveSensitivity,
     responseObjective: userRecord[0].responseObjective,
     contextCarryover: userRecord[0].contextCarryover,
@@ -53,6 +58,28 @@ export async function streamPortalMessage(
     .slice(-getCarryoverMessageLimit(carryoverPolicy))
     .map((msg) => ({ role: msg.role as "user" | "portal", content: msg.content }));
 
+  const selectedModel = userRecord[0].fastMode === 1 && ENV.localLlmFallbackModel
+    ? ENV.localLlmFallbackModel
+    : ENV.localLlmModel;
+  const cacheKey = hashResponseRequest({ userId, query: message, trajectoryRootCid, model: selectedModel });
+  const cached = await readCachedResponse(cacheKey);
+  if (cached) {
+    onToken(cached.response);
+    const receipt = createReceipt({
+      operation: "portal.conversation.generate",
+      intelligence_mode: "local_model",
+      provider: "local-cache",
+      model: cached.model,
+      context_sources: ["response-cache"],
+      policy: "user-scoped local response cache; external providers disabled",
+      verification: "previously generated local response replayed; no new inference performed",
+      result_state: "CACHED_INFERENCE",
+    });
+    await persistReceipt(userId, receipt);
+    await portalChat.addMessage(conversationId, userId, "portal", cached.response);
+    return { response: cached.response, metadata: { provider: "local", modelId: cached.model, cached: true, receipt } };
+  }
+
   const adaptiveResponse = await generateAdaptiveResponse(
     message,
     userContext,
@@ -60,7 +87,17 @@ export async function streamPortalMessage(
     recentMessages,
     userRecord[0].modelTemperature,
     onToken,
+    { model: selectedModel, fallbackModel: ENV.localLlmFallbackModel || undefined },
   );
+
+  await writeCachedResponse({
+    cacheKey,
+    userId,
+    queryHash: hashResponseRequest({ userId, query: message, trajectoryRootCid, model: selectedModel }),
+    trajectoryRootCid,
+    response: adaptiveResponse.response,
+    model: adaptiveResponse.metadata.modelId ?? selectedModel,
+  });
 
   await persistReceipt(userId, adaptiveResponse.metadata.receipt);
   await portalChat.addMessage(conversationId, userId, "portal", adaptiveResponse.response);

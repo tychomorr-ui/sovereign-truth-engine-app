@@ -130,6 +130,7 @@ export async function routeLocalConversation(input: {
   temperature?: number;
     topP?: number;
     contextBoundary?: ContextBoundary;
+    model?: string;
 }): Promise<IntelligenceResult<{ content: string; modelId: string; provider: string }>> {
   const operation = input.operation ?? "conversation.generate";
   const contextSources = input.contextSources ?? [];
@@ -193,6 +194,8 @@ export async function streamLocalConversation(
     temperature?: number;
     topP?: number;
     contextBoundary?: ContextBoundary;
+    model?: string;
+    fallbackModel?: string;
   },
   onToken: (token: string) => void,
 ): Promise<IntelligenceResult<{ content: string; modelId: string; provider: string }>> {
@@ -212,27 +215,27 @@ export async function streamLocalConversation(
   }
 
   try {
-    const provider = getConfiguredLocalModelProvider();
-    const chunks: string[] = [];
-    for await (const token of provider.stream({
-      system: input.system,
-      messages: input.messages,
-      maxTokens: input.maxTokens,
-      temperature: input.temperature,
-      topP: input.topP,
-      contextBoundary: input.contextBoundary,
-    })) {
-      chunks.push(token);
-      onToken(token);
+    const primaryModel = input.model ?? ENV.localLlmModel;
+    const models = [primaryModel, primaryModel, primaryModel, input.fallbackModel ?? ENV.localLlmFallbackModel].filter((model, index, all): model is string => Boolean(model) && all.indexOf(model) === index);
+    let lastError: unknown;
+    for (const model of models) {
+      for (let attempt = 1; attempt <= (model === primaryModel ? 3 : 1); attempt += 1) {
+        try {
+          const provider = getConfiguredLocalModelProvider(model);
+          const chunks: string[] = [];
+          for await (const token of provider.stream({ system: input.system, messages: input.messages, maxTokens: input.maxTokens, temperature: input.temperature, topP: input.topP, contextBoundary: input.contextBoundary })) {
+            chunks.push(token);
+            onToken(token);
+          }
+          const content = chunks.join("").trim();
+          if (!content) throw new Error("LOCAL_MODEL_UNAVAILABLE: empty streamed response.");
+          return { status: "ok", value: { content, modelId: model, provider: "local" }, external_fallback: false, receipt: createReceipt({ operation, intelligence_mode: "local_model", provider: "local", model, context_sources: contextSources, policy: "local model streaming allowed; external providers disabled", verification: model === primaryModel ? "local model streamed generated inference; KEIRA verification required" : "primary model failed; configured fallback model streamed generated inference", result_state: "GENERATED_INFERENCE" }) };
+        } catch (error) {
+          lastError = error;
+        }
+      }
     }
-    const content = chunks.join("").trim();
-    if (!content) throw new Error("LOCAL_MODEL_UNAVAILABLE: empty streamed response.");
-    return {
-      status: "ok",
-      value: { content, modelId: ENV.localLlmModel, provider: "local" },
-      external_fallback: false,
-      receipt: createReceipt({ operation, intelligence_mode: "local_model", provider: "local", model: ENV.localLlmModel, context_sources: contextSources, policy: "local model streaming allowed; external providers disabled", verification: "local model streamed generated inference; KEIRA verification required", result_state: "GENERATED_INFERENCE" }),
-    };
+    throw lastError instanceof Error ? lastError : new Error("LOCAL_MODEL_UNAVAILABLE: all configured local models failed.");
   } catch (error) {
     const fallback = deterministicResponse(input);
     onToken(fallback.content);

@@ -154,6 +154,7 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
           model: this.model,
           messages: [{ role: "system", content: request.system }, ...request.messages],
           max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
+          options: { num_ctx: ENV.localLlmNumCtx },
           temperature: request.temperature ?? ENV.localLlmTemperature,
           top_p: request.topP ?? ENV.localLlmTopP,
           seed: request.seed ?? ENV.localLlmSeed,
@@ -196,6 +197,7 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
           model: this.model,
           messages: [{ role: "system", content: request.system }, ...request.messages],
           max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
+          options: { num_ctx: ENV.localLlmNumCtx },
           temperature: request.temperature ?? ENV.localLlmTemperature,
           top_p: request.topP ?? ENV.localLlmTopP,
           seed: request.seed ?? ENV.localLlmSeed,
@@ -289,6 +291,6 @@ export class LocalModelRegistry {
   get(modelId: string) { return this.entries.get(modelId); }
 }
 
-export function getConfiguredLocalModelProvider(): OpenAiCompatibleLocalProvider {
-  return new OpenAiCompatibleLocalProvider();
+export function getConfiguredLocalModelProvider(model = ENV.localLlmModel): OpenAiCompatibleLocalProvider {
+  return new OpenAiCompatibleLocalProvider(ENV.localLlmBaseUrl, model);
 }

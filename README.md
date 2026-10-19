@@ -55,6 +55,8 @@ canonical Singapore configuration is:
 KEIRA_LLM_RUNTIME=ollama
 KEIRA_LLM_ENDPOINT=http://10.9.0.1:11434/v1
 KEIRA_LLM_MODEL=llama3.2:3b
+KEIRA_LLM_FALLBACK_MODEL=llama3.2:1b
+LOCAL_LLM_NUM_CTX=2048
 ```
 
 These are server-only variables. The browser calls KEIRA’s `/api/trpc`
@@ -86,7 +88,10 @@ The dedicated repository is [`tychomorr-ui/sovereign-truth-engine-app`](https://
 
 Set either the canonical `LOCAL_LLM_BASE_URL`/`LOCAL_LLM_MODEL` pair or the
 production aliases `KEIRA_LLM_ENDPOINT`/`KEIRA_LLM_MODEL` to enable a local
-model. Leave both pairs empty to use deterministic mode. `LOCAL_LLM_API_KEY`
+model. `KEIRA_LLM_FALLBACK_MODEL` is optional; Fast Mode selects it directly,
+and the streaming router uses it after three failed primary attempts.
+`LOCAL_LLM_NUM_CTX` defaults to `2048` to bound Ollama CPU/memory use. Leave
+both endpoint/model pairs empty to use deterministic mode. `LOCAL_LLM_API_KEY`
 is optional and is sent only to the configured local endpoint.
 
 Trajectory signing does not consume `KEIRA_PRIVATE_KEY` directly. Production
