@@ -11,6 +11,7 @@ import { getKeiraPublicIdentityStatus } from "../keira-identity-persistence";
 import { keiraIdentityRootSecretHealthHandler } from "../keira-identity-health";
 import { betaOpenStatusHandler } from "../beta-open-status";
 import { registerStorageProxy } from "./storageProxy";
+import { signTrajectoryHandler } from "../trajectory-attestation";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -47,6 +48,7 @@ async function startServer() {
   registerStorageProxy(app);
   app.get("/api/beta-status", betaOpenStatusHandler);
   app.get("/api/keira-identity/health", keiraIdentityRootSecretHealthHandler);
+  app.post("/api/keira/sign-trajectory", (req, res) => signTrajectoryHandler(req, res));
   // Public identity material contains KEIRA's public key and signed receipt only.
   // It intentionally never creates keys, emits private material, or calls ARCHANGEL.
   app.get("/.well-known/keira-identity.json", async (_req, res) => {

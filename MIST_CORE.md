@@ -1,6 +1,6 @@
 # KEIRA Phase 4 — Deterministic MIST Retrieval Core
 
-**Status:** Implemented as a browser-local deterministic retrieval library with an additive server-side persistence handoff. No UI, chat integration, local LLM generation, Phoenix recursion, or Ed25519 trajectory signature is included in this phase.
+**Status:** Implemented as a browser-local deterministic retrieval library with durable server-side persistence, Portal Chat visualization, external Merkle-report export, server-side Ed25519 attestation, and a public browser verifier. Local LLM generation and Phoenix recursion remain outside this phase.
 
 ## Core result contract
 
@@ -39,7 +39,7 @@ It additionally includes the normalized and SHA-256-hashed query, an explicit st
 - L2 accepts only vectors matching the active exact model name, model version, expected dimension, and finite-value invariant.
 - Empty corpus requests return an empty trajectory without initializing the embedding provider.
 - Embedding failure returns an explicit `PARTIAL` result: L1 and L6 may still report their deterministic evidence, while L2–L5 are `UNAVAILABLE`. No hosted provider or lexical stand-in is substituted for semantic retrieval.
-- `trajectoryArtifacts` are ranked fusion artifacts with CIDs, layer memberships, individual layer scores, RRF score, and rank. Browser retrieval remains unsigned; the persistence handoff creates a durable Merkle commitment.
+- `trajectoryArtifacts` are ranked fusion artifacts with CIDs, layer memberships, individual layer scores, RRF score, and rank. Browser retrieval is untrusted input; the persistence handoff creates a durable internal Merkle commitment.
 
 ## Durable trajectory and Merkle commitment
 
@@ -47,13 +47,16 @@ The protected `portal.persistMistTrajectory` procedure accepts a `MistResult` pr
 
 The durable envelope stores the query hash/normalized query, status, indexing metadata, layer-count summary, RRF constant, leaf count, Merkle root, and immutable leaf rows. The companion `portal.getMistTrajectory` and `portal.listMistTrajectories` procedures enforce user scoping. Writes use one database transaction for the envelope and its leaves, so a committed root always has its committed leaf set.
 
-This is tamper-evident storage, not an authority or signature: the browser-submitted result is still untrusted input, and no Ed25519 key is used. A later attestation phase may sign the stored root after independent verification.
+This is tamper-evident storage, not an authority. The external audit export additionally derives a minimal root from `artifact_cid`, `rank`, and `rrf_score`, then requests a server-side Ed25519 signature over that root. The private key never enters browser code. `/keira/verify` recomputes the external root and verifies the signature with the report’s public key.
 
 ## Files
 
 ```text
-client/src/lib/mist/types.ts
 client/src/lib/mist/core.ts
+client/src/lib/mist/commitment.ts
+client/src/lib/mist/audit-verifier.ts
+client/src/pages/KeiraVerify.tsx
+client/src/lib/mist/types.ts
 server/mist-core.test.ts
 server/mist-trajectory.ts
 server/mist-trajectory.test.ts
@@ -64,8 +67,8 @@ MIST_CORE.md
 
 ## Deferred work
 
-- Corpus upload/UI and Portal Chat retrieval integration.
-- Ed25519 attestation/signatures, independent re-execution of submitted trajectories, and receipt integration.
+- Corpus upload and broader corpus-management UI.
+- Independent re-execution of submitted trajectories is available in the Portal archive; signed-report receipt integration beyond the exported attestation remains deferred.
 - Structured claims, deterministic evidence-span verification, local LLM synthesis, and Phoenix recursion.
 - Hybrid/reranking algorithms, learned optimization, remote vector stores, and all hosted inference providers.
 

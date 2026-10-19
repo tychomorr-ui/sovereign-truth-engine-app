@@ -47,7 +47,7 @@ describe("browser MIST Merkle verification", () => {
 
   it("creates an auditable JSON report without payload blobs or private data", async () => {
     const commitment = await makeCommitment();
-    const report = createMerkleVerificationReport({
+    const report = await createMerkleVerificationReport({
       generatedAt: "2026-10-18T17:00:00.000Z",
       trajectory: {
         trajectoryId: "trajectory-1",

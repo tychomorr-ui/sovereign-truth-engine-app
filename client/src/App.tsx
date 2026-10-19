@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import PortalChat from "@/pages/PortalChat";
 import NotFound from "@/pages/NotFound";
+import KeiraVerify from "@/pages/KeiraVerify";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={PortalChat} />
       <Route path="/portal-chat" component={PortalChat} />
+      <Route path="/keira/verify" component={KeiraVerify} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

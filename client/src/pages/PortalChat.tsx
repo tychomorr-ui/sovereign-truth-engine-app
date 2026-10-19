@@ -190,6 +190,7 @@ export default function PortalChat() {
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [showCapabilityPanel, setShowCapabilityPanel] = useState(false);
   const [showMistPanel, setShowMistPanel] = useState(false);
+  const [mistLayerFocus, setMistLayerFocus] = useState<"ALL" | "L4_ECHOES" | "L5_PATTERNS" | "L6_ARCANA">("ALL");
   const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
   const [mistStatus, setMistStatus] = useState<string | null>(null);
   const [mistVerification, setMistVerification] = useState<{
@@ -470,15 +471,9 @@ export default function PortalChat() {
       setShowThreads(false);
       setShowContextPanel(false);
       composerRef.current?.focus();
-    } else if (label === "Echoes") {
-      setShowThreads(true);
-    } else if (label === "Arcana" || label === "Patterns") {
-      if (label === "Patterns") {
-        setShowMistPanel(true);
-      } else {
-        setShowKeywordPanel(true);
-        setShowContextPanel(true);
-      }
+    } else if (label === "Echoes" || label === "Arcana" || label === "Patterns") {
+      setMistLayerFocus(label === "Echoes" ? "L4_ECHOES" : label === "Arcana" ? "L6_ARCANA" : "L5_PATTERNS");
+      setShowMistPanel(true);
     } else if (label === "Resonance") {
       setShowVoicePanel(true);
     } else if (label === "Interface") {
@@ -566,18 +561,44 @@ export default function PortalChat() {
     }
   };
 
-  const handleDownloadMistVerificationReport = () => {
+  const handleDownloadMistVerificationReport = async () => {
     if (!selectedMistTrajectory || !mistVerification) return;
-    const report = createMerkleVerificationReport({ trajectory: selectedMistTrajectory, verification: mistVerification });
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `keira-mist-verification-${selectedMistTrajectory.trajectoryId}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+    try {
+      setMistStatus("Requesting KEIRA Ed25519 attestation…");
+      const unsignedReport = await createMerkleVerificationReport({ trajectory: selectedMistTrajectory, verification: mistVerification });
+      const signingResponse = await fetch("/api/keira/sign-trajectory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trajectory_root_cid: unsignedReport.trajectory_root_cid }),
+      });
+      const signingBody = await signingResponse.json() as { signature_hex?: string; pubkey_hex?: string; error?: string };
+      if (!signingResponse.ok || !signingBody.signature_hex || !signingBody.pubkey_hex) throw new Error(signingBody.error || "KEIRA signing endpoint did not return an attestation.");
+      const report = await createMerkleVerificationReport({
+        trajectory: selectedMistTrajectory,
+        verification: mistVerification,
+        attestation: {
+          algorithm: "Ed25519",
+          encoding: "hex",
+          trajectory_root_cid: unsignedReport.trajectory_root_cid,
+          signature_hex: signingBody.signature_hex,
+          pubkey_hex: signingBody.pubkey_hex,
+          signed_at: new Date().toISOString(),
+        },
+      });
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `keira-mist-verification-${selectedMistTrajectory.trajectoryId}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      setMistStatus("Signed audit report downloaded.");
+    } catch (error) {
+      console.error("Failed to sign MIST verification report", error);
+      setMistStatus(error instanceof Error ? `Report unavailable: ${error.message}` : "Report signing unavailable.");
+    }
   };
 
   const handleSendMessage = async () => {
@@ -753,6 +774,7 @@ export default function PortalChat() {
   const presenceState = cmap?.handshakeComplete ? "Contact" : "Awaiting Contact";
   const currentState = strategy ? STRATEGY_LABELS[strategy] : presenceState;
   const selectedMistTrajectory = mistHistoryQuery.data?.find((trajectory) => trajectory.trajectoryId === selectedMistTrajectoryId) ?? null;
+  const visibleMistLeaves = selectedMistTrajectory?.merkle.leaves.filter((leaf) => mistLayerFocus === "ALL" || leaf.layerMemberships.includes(mistLayerFocus)) ?? [];
 
   return (
     <main className="min-h-screen bg-[#03050a] text-[#f4f4f5] selection:bg-[#d7c7ff] selection:text-[#07090f]">
@@ -1096,7 +1118,7 @@ export default function PortalChat() {
             {showMistPanel && (
               <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="MIST trajectory history">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><Activity className="h-4 w-4" /> MIST trajectory archive</div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><Activity className="h-4 w-4" /> MIST visualizer · {mistLayerFocus === "ALL" ? "all layers" : mistLayerFocus}</div>
                   <button type="button" onClick={() => setShowMistPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close MIST trajectory archive"><X className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -1126,11 +1148,11 @@ export default function PortalChat() {
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><div className="text-[#737b8f]">Leaves</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.leafCount}</div></div><div><div className="text-[#737b8f]">Algorithm</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.algorithm}</div></div></div>
                         <div className="mt-4 flex flex-wrap gap-2">
                           <Button type="button" onClick={() => void handleReexecuteMistTrajectory()} disabled={mistVerification?.message === "Re-executing local MIST layers…"} className="flex-1 rounded-none border border-[#6f55c7] bg-transparent text-[#cbb8ff] hover:bg-[#21154d]"><Activity className="mr-2 h-4 w-4" />{mistVerification?.message === "Re-executing local MIST layers…" ? "Re-executing…" : "Re-execute & verify"}</Button>
-                          <Button type="button" onClick={handleDownloadMistVerificationReport} disabled={!mistVerification} className="rounded-none border border-[#273865] bg-transparent text-[#8be9ff] hover:bg-[#13213e]"><FileCode2 className="mr-2 h-4 w-4" />Export JSON</Button>
+                          <Button type="button" onClick={() => void handleDownloadMistVerificationReport()} disabled={!mistVerification} className="rounded-none border border-[#273865] bg-transparent text-[#8be9ff] hover:bg-[#13213e]"><FileCode2 className="mr-2 h-4 w-4" />Export signed JSON</Button>
                         </div>
                         {mistVerification && <div className={`mt-3 border p-3 text-xs leading-5 ${mistVerification.status === "verified" ? "border-[#43d9b0] bg-[#0d302b] text-[#8ff5d5]" : mistVerification.status === "mismatch" ? "border-[#ff7f9f] bg-[#351526] text-[#ffb6c7]" : "border-[#6f55c7] bg-[#21154d]/50 text-[#d7c7ff]"}`} role="status"><div className="font-semibold uppercase tracking-[0.16em]">{mistVerification.status === "verified" ? "Root verified" : mistVerification.status === "mismatch" ? "Root mismatch" : "Verification pending"}</div><div className="mt-1">{mistVerification.message}</div>{mistVerification.computedRoot && mistVerification.computedRoot !== selectedMistTrajectory.merkle.root && <div className="mt-2 break-all font-mono text-[0.65rem]">Computed: {mistVerification.computedRoot}</div>}</div>}
-                        <div className="mt-4 text-[0.6rem] uppercase tracking-[0.16em] text-[#737b8f]">Trajectory artifacts</div>
-                        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">{selectedMistTrajectory.merkle.leaves.map((leaf) => <div key={leaf.artifactCid} className="flex items-center justify-between gap-3 text-xs text-[#a6aec0]"><span className="truncate">{leaf.artifactCid}</span><span className="shrink-0 text-[#cbb8ff]">#{leaf.fusionRank}</span></div>)}</div>
+                        <div className="mt-4 text-[0.6rem] uppercase tracking-[0.16em] text-[#737b8f]">Trajectory artifacts · {visibleMistLeaves.length} in focus</div>
+                        <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{visibleMistLeaves.length ? visibleMistLeaves.map((leaf) => <div key={leaf.artifactCid} className="border border-[#1f3156] bg-[#080f22] p-2 text-xs text-[#a6aec0]"><div className="flex items-center justify-between gap-3"><span className="truncate font-mono">{leaf.artifactCid}</span><span className="shrink-0 text-[#cbb8ff]">#{leaf.fusionRank} · RRF {leaf.rrfScore.toFixed(5)}</span></div><div className="mt-1 text-[0.58rem] uppercase tracking-[0.12em] text-[#8be9ff]">{leaf.layerMemberships.join(" · ") || "No layer membership"}</div></div>) : <p className="border border-[#273865] bg-[#080f22] p-3 text-xs text-[#737b8f]">No persisted artifacts belong to this layer in the selected trajectory.</p>}</div>
                       </>
                     ) : <p className="text-xs leading-5 text-[#737b8f]">Select a saved trajectory to inspect its Merkle commitment and ranked artifacts.</p>}
                   </div>

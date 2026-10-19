@@ -24,6 +24,16 @@ export type MerkleVerificationReport = {
   reportType: "KEIRA_MIST_MERKLE_VERIFICATION";
   schemaVersion: "1.0.0";
   generatedAt: string;
+  trajectory_root_cid: string;
+  saved_merkle_root: string;
+  attestation: {
+    algorithm: "Ed25519";
+    encoding: "hex";
+    trajectory_root_cid: string;
+    signature_hex: string;
+    pubkey_hex: string;
+    signed_at: string;
+  } | null;
   verification: {
     status: "verified" | "mismatch" | "unavailable";
     message: string;
@@ -43,9 +53,25 @@ export type MerkleVerificationReport = {
     leafCount: number;
   };
   leaves: Array<Pick<CommitmentLeaf, "leafIndex" | "artifactCid" | "leafHash" | "fusionRank" | "rrfScore" | "layerMemberships">>;
+  audit_leaves: Array<{ leaf_index: number; artifact_cid: string; rank: number; rrf_score: number; leaf_hash: string }>;
 };
 
-export function createMerkleVerificationReport(input: {
+export type ExternalAuditLeaf = {
+  leaf_index: number;
+  artifact_cid: string;
+  rank: number;
+  rrf_score: number;
+};
+
+export async function buildExternalAuditRoot(leaves: ExternalAuditLeaf[]): Promise<{ root: string; leaves: Array<ExternalAuditLeaf & { leaf_hash: string }> }> {
+  const committedLeaves = await Promise.all([...leaves].sort((left, right) => left.leaf_index - right.leaf_index).map(async (leaf) => ({
+    ...leaf,
+    leaf_hash: await sha256Hex(canonicalJson({ artifact_cid: leaf.artifact_cid, rank: leaf.rank, rrf_score: leaf.rrf_score })),
+  })));
+  return { root: await buildMerkleRoot(committedLeaves.map((leaf) => leaf.leaf_hash)), leaves: committedLeaves };
+}
+
+export async function createMerkleVerificationReport(input: {
   trajectory: {
     trajectoryId: string;
     status: string;
@@ -56,12 +82,22 @@ export function createMerkleVerificationReport(input: {
     merkle: Pick<BrowserMerkleCommitment, "algorithm" | "root" | "leafCount" | "leaves">;
   };
   verification: { status: MerkleVerificationReport["verification"]["status"]; message: string; computedRoot?: string };
+  attestation?: MerkleVerificationReport["attestation"];
   generatedAt?: string;
-}): MerkleVerificationReport {
+}): Promise<MerkleVerificationReport> {
+  const audit = await buildExternalAuditRoot(input.trajectory.merkle.leaves.map((leaf) => ({
+    leaf_index: leaf.leafIndex,
+    artifact_cid: leaf.artifactCid,
+    rank: leaf.fusionRank,
+    rrf_score: leaf.rrfScore,
+  })));
   return {
     reportType: "KEIRA_MIST_MERKLE_VERIFICATION",
     schemaVersion: "1.0.0",
     generatedAt: input.generatedAt ?? new Date().toISOString(),
+    trajectory_root_cid: audit.root,
+    saved_merkle_root: audit.root,
+    attestation: input.attestation ?? null,
     verification: {
       status: input.verification.status,
       message: input.verification.message,
@@ -88,6 +124,7 @@ export function createMerkleVerificationReport(input: {
       rrfScore,
       layerMemberships: [...layerMemberships],
     })),
+    audit_leaves: audit.leaves,
   };
 }
 
