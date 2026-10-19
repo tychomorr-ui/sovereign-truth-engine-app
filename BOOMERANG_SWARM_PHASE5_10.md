@@ -47,6 +47,9 @@ The runtime order is now explicit:
 - Phase 5–10 focused suite: 3 tests passed.
 - TypeScript check: passed.
 - Database migration: additive `0017_pale_gorgon.sql`, applied to the hosted database.
+- Hosted browser smoke test: passed; the three-agent result persisted with Ed25519 attestation active, 100% agent coverage, one fused artifact, and a displayed Merkle root.
+- Storage repair: `0018_complete_fat_cobra.sql` widens `resultJson` to MySQL `LONGTEXT` because full three-agent embedding vectors exceed the 64 KiB `TEXT` limit; migration applied successfully.
+- Final release gate: 238 tests passed, 1 expected skip, type-check passed, production build passed, and Drizzle schema check passed.
 
 ## Boundaries
 

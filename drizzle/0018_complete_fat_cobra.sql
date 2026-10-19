@@ -1,0 +1,1 @@
+ALTER TABLE `keiraBoomerangTrajectories` MODIFY COLUMN `resultJson` longtext NOT NULL;

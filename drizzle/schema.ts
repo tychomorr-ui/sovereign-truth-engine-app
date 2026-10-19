@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, longtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -215,7 +215,7 @@ export const keiraBoomerangTrajectories = mysqlTable("keiraBoomerangTrajectories
   schemaVersion: varchar("schemaVersion", { length: 48 }).notNull(),
   queryHash: varchar("queryHash", { length: 128 }).notNull(),
   merkleRoot: varchar("merkleRoot", { length: 128 }).notNull(),
-  resultJson: text("resultJson").notNull(),
+  resultJson: longtext("resultJson").notNull(),
   attestationAlgorithm: varchar("attestationAlgorithm", { length: 32 }),
   signatureHex: text("signatureHex"),
   pubkeyHex: varchar("pubkeyHex", { length: 128 }),
