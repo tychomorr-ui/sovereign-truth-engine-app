@@ -29,7 +29,7 @@ import {
   resolveResponseObjective,
 } from "./keira-response-controls";
 import { getConfiguredLocalModelProvider } from "./local-model";
-import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt, searchDurableMemory, updateDurableMemory } from "./keira-durable-memory";
+import { persistMemory, readDurableMemory, revokeDurableMemory, readReceipts, persistReceipt, persistMistAttestationReceipt, searchDurableMemory, updateDurableMemory } from "./keira-durable-memory";
 import { proposeAdaptation } from "./adaptation-engine";
 import { listAdaptations, persistAdaptation } from "./adaptation-persistence";
 import { runApexCanonical } from "./apex-canonical";
@@ -145,6 +145,16 @@ export const portalChatRouter = router({
   getDurableReceipts: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))
     .query(async ({ ctx, input }) => readReceipts(ctx.user.id, input.limit)),
+
+  attachMistAttestation: protectedProcedure
+    .input(z.object({
+      trajectoryId: z.string().uuid(),
+      trajectoryRootCid: z.string().regex(/^[a-f0-9]{64}$/i),
+      signatureHex: z.string().regex(/^[a-f0-9]{128}$/i),
+      pubkeyHex: z.string().regex(/^[a-f0-9]{64}$/i),
+      signedAt: z.string().datetime(),
+    }))
+    .mutation(async ({ ctx, input }) => persistMistAttestationReceipt(ctx.user.id, input)),
 
   listAdaptations: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(500).default(100) }))

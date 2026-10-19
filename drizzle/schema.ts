@@ -112,6 +112,11 @@ export const keiraIntelligenceReceipts = mysqlTable("keiraIntelligenceReceipts",
   policy: text("policy").notNull(),
   verification: text("verification").notNull(),
   resultState: varchar("resultState", { length: 64 }).notNull(),
+  attestationAlgorithm: varchar("attestationAlgorithm", { length: 32 }),
+  attestationTrajectoryRootCid: varchar("attestationTrajectoryRootCid", { length: 128 }),
+  attestationSignatureHex: text("attestationSignatureHex"),
+  attestationPubkeyHex: varchar("attestationPubkeyHex", { length: 128 }),
+  attestationSignedAt: timestamp("attestationSignedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type KeiraIntelligenceReceipt = typeof keiraIntelligenceReceipts.$inferSelect;

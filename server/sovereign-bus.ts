@@ -20,6 +20,13 @@ export type IntelligenceReceipt = {
   policy: string;
   verification: string;
   result_state: string;
+  attestation?: {
+    algorithm: "Ed25519";
+    trajectory_root_cid: string;
+    signature_hex: string;
+    pubkey_hex: string;
+    signed_at: string;
+  };
 };
 
 export type IntelligenceResult<T> = {

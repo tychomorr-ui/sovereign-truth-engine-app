@@ -65,7 +65,64 @@ export async function revokeDurableMemory(userId: number, id: string): Promise<{
 export async function persistReceipt(userId: number, receipt: IntelligenceReceipt): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Durable receipts are unavailable: database is not configured.");
-  await db.insert(keiraIntelligenceReceipts).values({ receiptId: receipt.receipt_id, userId, operation: receipt.operation, intelligenceMode: receipt.intelligence_mode, provider: receipt.provider, model: receipt.model, contextSources: JSON.stringify(receipt.context_sources), externalServiceUsed: receipt.external_service_used ? 1 : 0, dataLeftLocalNode: receipt.data_left_local_node ? 1 : 0, policy: receipt.policy, verification: receipt.verification, resultState: receipt.result_state, createdAt: new Date(receipt.timestamp) });
+  await db.insert(keiraIntelligenceReceipts).values({
+    receiptId: receipt.receipt_id,
+    userId,
+    operation: receipt.operation,
+    intelligenceMode: receipt.intelligence_mode,
+    provider: receipt.provider,
+    model: receipt.model,
+    contextSources: JSON.stringify(receipt.context_sources),
+    externalServiceUsed: receipt.external_service_used ? 1 : 0,
+    dataLeftLocalNode: receipt.data_left_local_node ? 1 : 0,
+    policy: receipt.policy,
+    verification: receipt.verification,
+    resultState: receipt.result_state,
+    attestationAlgorithm: receipt.attestation?.algorithm ?? null,
+    attestationTrajectoryRootCid: receipt.attestation?.trajectory_root_cid ?? null,
+    attestationSignatureHex: receipt.attestation?.signature_hex ?? null,
+    attestationPubkeyHex: receipt.attestation?.pubkey_hex ?? null,
+    attestationSignedAt: receipt.attestation ? new Date(receipt.attestation.signed_at) : null,
+    createdAt: new Date(receipt.timestamp),
+  });
+}
+
+const SHA256_HEX = /^[a-f0-9]{64}$/i;
+const ED25519_SIGNATURE_HEX = /^[a-f0-9]{128}$/i;
+const ED25519_PUBLIC_KEY_HEX = /^[a-f0-9]{64}$/i;
+
+export async function persistMistAttestationReceipt(userId: number, input: {
+  trajectoryId: string;
+  trajectoryRootCid: string;
+  signatureHex: string;
+  pubkeyHex: string;
+  signedAt: Date | string;
+}): Promise<IntelligenceReceipt> {
+  if (!SHA256_HEX.test(input.trajectoryRootCid)) throw new Error("Invalid MIST attestation root.");
+  if (!ED25519_SIGNATURE_HEX.test(input.signatureHex)) throw new Error("Invalid Ed25519 attestation signature.");
+  if (!ED25519_PUBLIC_KEY_HEX.test(input.pubkeyHex)) throw new Error("Invalid Ed25519 public key.");
+  const signedAt = new Date(input.signedAt);
+  if (Number.isNaN(signedAt.getTime())) throw new Error("Invalid MIST attestation timestamp.");
+
+  const receipt = createReceipt({
+    operation: "mist.trajectory.attestation",
+    intelligence_mode: "deterministic",
+    provider: "keira-identity-ed25519",
+    model: null,
+    context_sources: [`mist-trajectory:${input.trajectoryId}`],
+    policy: "public Ed25519 attestation metadata only; private key never persisted",
+    verification: `trajectory ${input.trajectoryId}: signed root recorded for external verification`,
+    result_state: "ATTESTED",
+    attestation: {
+      algorithm: "Ed25519",
+      trajectory_root_cid: input.trajectoryRootCid,
+      signature_hex: input.signatureHex.toLowerCase(),
+      pubkey_hex: input.pubkeyHex.toLowerCase(),
+      signed_at: signedAt.toISOString(),
+    },
+  });
+  await persistReceipt(userId, receipt);
+  return receipt;
 }
 
 export async function readReceipts(userId: number, limit = 100) {

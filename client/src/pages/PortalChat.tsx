@@ -269,6 +269,7 @@ export default function PortalChat() {
     { enabled: isAuthenticated && showMistPanel },
   );
   const persistMistTrajectoryMutation = trpc.portal.persistMistTrajectory.useMutation();
+  const attachMistAttestationMutation = trpc.portal.chat.attachMistAttestation.useMutation();
   const mistStoreRef = useRef<IndexedDbCorpusStore | null>(null);
   const mistProviderRef = useRef<TransformersJsEmbeddingProvider | null>(null);
 
@@ -585,6 +586,13 @@ export default function PortalChat() {
           signed_at: new Date().toISOString(),
         },
       });
+      await attachMistAttestationMutation.mutateAsync({
+        trajectoryId: selectedMistTrajectory.trajectoryId,
+        trajectoryRootCid: report.trajectory_root_cid,
+        signatureHex: report.attestation!.signature_hex,
+        pubkeyHex: report.attestation!.pubkey_hex,
+        signedAt: report.attestation!.signed_at,
+      });
       const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -594,7 +602,7 @@ export default function PortalChat() {
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-      setMistStatus("Signed audit report downloaded.");
+      setMistStatus("Signed audit report downloaded and attestation added to durable receipt history.");
     } catch (error) {
       console.error("Failed to sign MIST verification report", error);
       setMistStatus(error instanceof Error ? `Report unavailable: ${error.message}` : "Report signing unavailable.");

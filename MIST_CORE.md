@@ -47,7 +47,7 @@ The protected `portal.persistMistTrajectory` procedure accepts a `MistResult` pr
 
 The durable envelope stores the query hash/normalized query, status, indexing metadata, layer-count summary, RRF constant, leaf count, Merkle root, and immutable leaf rows. The companion `portal.getMistTrajectory` and `portal.listMistTrajectories` procedures enforce user scoping. Writes use one database transaction for the envelope and its leaves, so a committed root always has its committed leaf set.
 
-This is tamper-evident storage, not an authority. The external audit export additionally derives a minimal root from `artifact_cid`, `rank`, and `rrf_score`, then requests a server-side Ed25519 signature over that root. The private key never enters browser code. `/keira/verify` recomputes the external root and verifies the signature with the report’s public key.
+This is tamper-evident storage, not an authority. The external audit export additionally derives a minimal root from `artifact_cid`, `rank`, and `rrf_score`, then requests a server-side Ed25519 signature over that root. The private key never enters browser code. `/keira/verify` recomputes the external root and verifies the signature with the report’s public key. After a successful export, KEIRA appends a `mist.trajectory.attestation` receipt containing only the public algorithm, root, signature, public key, timestamp, and trajectory reference; private key material and report bodies are never stored in receipt history.
 
 ## Files
 
@@ -57,6 +57,8 @@ client/src/lib/mist/commitment.ts
 client/src/lib/mist/audit-verifier.ts
 client/src/pages/KeiraVerify.tsx
 client/src/lib/mist/types.ts
+server/keira-durable-memory.ts
+server/portal-chat-router.ts
 server/mist-core.test.ts
 server/mist-trajectory.ts
 server/mist-trajectory.test.ts
@@ -68,7 +70,7 @@ MIST_CORE.md
 ## Deferred work
 
 - Corpus upload and broader corpus-management UI.
-- Independent re-execution of submitted trajectories is available in the Portal archive; signed-report receipt integration beyond the exported attestation remains deferred.
+- Independent re-execution of submitted trajectories is available in the Portal archive; durable public attestation receipt linkage is implemented.
 - Structured claims, deterministic evidence-span verification, local LLM synthesis, and Phoenix recursion.
 - Hybrid/reranking algorithms, learned optimization, remote vector stores, and all hosted inference providers.
 
