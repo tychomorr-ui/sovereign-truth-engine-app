@@ -13,7 +13,7 @@ export const users = mysqlTable("users", {
   passwordHash: text("passwordHash"),
   avatarUrl: text("avatarUrl"),
   avatarGlyph: varchar("avatarGlyph", { length: 16 }),
-  alienBio: text("alienBio"),
+  profileBio: text("profileBio"),
   preferredVoice: varchar("preferredVoice", { length: 255 }),
   voiceRate: int("voiceRate").default(100).notNull(),
   voicePitch: int("voicePitch").default(100).notNull(),

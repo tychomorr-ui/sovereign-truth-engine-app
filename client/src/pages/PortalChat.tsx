@@ -152,7 +152,7 @@ const STRATEGY_LABELS: Record<DialogueStrategy, string> = {
   catalytic: "Catalytic",
 };
 
-const ALIEN_AVATAR_GLYPHS = ["◈", "⌬", "⟡", "⟁", "◌", "⧫", "☍", "✦"];
+const PROFILE_AVATAR_GLYPHS = ["◈", "⌬", "⟡", "⟁", "◌", "⧫", "☍", "✦"];
 
 const CINEMATIC_NAV = [
   { label: "Conversation", icon: MessageCircle, detail: "Open channel" },
@@ -218,7 +218,7 @@ export default function PortalChat() {
   const [profileDraft, setProfileDraft] = useState({
     avatarUrl: "",
     avatarGlyph: "◈",
-    alienBio: "",
+    profileBio: "",
     preferredVoice: "",
     voiceRate: 100,
     voicePitch: 100,
@@ -325,7 +325,7 @@ export default function PortalChat() {
       setProfileDraft({
         avatarUrl: user.avatarUrl ?? "",
         avatarGlyph: user.avatarGlyph ?? "◈",
-        alienBio: user.alienBio ?? "",
+        profileBio: user.profileBio ?? "",
         preferredVoice: user.preferredVoice ?? "",
         voiceRate: user.voiceRate ?? 100,
         voicePitch: user.voicePitch ?? 100,
@@ -414,7 +414,7 @@ export default function PortalChat() {
       await profileMutation.mutateAsync({
         avatarUrl: profileDraft.avatarUrl || null,
         avatarGlyph: profileDraft.avatarGlyph || "◈",
-        alienBio: profileDraft.alienBio || null,
+        profileBio: profileDraft.profileBio || null,
         preferredVoice: profileDraft.preferredVoice || null,
         voiceRate: profileDraft.voiceRate,
         voicePitch: profileDraft.voicePitch,
@@ -503,8 +503,9 @@ export default function PortalChat() {
   };
 
   const handleSurfaceSelect = (label: (typeof CINEMATIC_NAV)[number]["label"]) => {
+    // Surface selection is a navigation action on mobile: close the drawer first.
+    setShowThreads(false);
     if (label === "Conversation") {
-      setShowThreads(false);
       setShowContextPanel(false);
       composerRef.current?.focus();
     } else if (label === "Echoes" || label === "Arcana" || label === "Patterns") {
@@ -1039,9 +1040,9 @@ export default function PortalChat() {
             <div className="mb-4 flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.2em] text-[#737b8f]">
               <Activity className="h-3.5 w-3.5 text-[#e8ddff]" /> Operator
             </div>
-            <button type="button" onClick={() => setShowProfilePanel(true)} className="flex w-full items-center gap-3 rounded-sm text-left transition hover:text-[#f3eadb]" aria-label="Open alien profile">
+            <button type="button" onClick={() => setShowProfilePanel(true)} className="flex w-full items-center gap-3 rounded-sm text-left transition hover:text-[#f3eadb]" aria-label="Open operator profile">
               {user?.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-[#6f55c7] object-cover shadow-[0_0_18px_rgba(139,92,246,0.3)]" /> : <span className="grid h-9 w-9 place-items-center rounded-full border border-[#6f55c7] bg-[#21154d]/80 text-lg text-[#8be9ff] shadow-[0_0_18px_rgba(139,92,246,0.3)]">{user?.avatarGlyph || "◈"}</span>}
-              <span className="min-w-0"><span className="block truncate text-[#c7c9d5]">{user?.name || "Operator"}</span><span className="mt-1 block truncate">{user?.alienBio || user?.email || "Authenticated"}</span></span>
+              <span className="min-w-0"><span className="block truncate text-[#c7c9d5]">{user?.name || "Operator"}</span><span className="mt-1 block truncate">{user?.profileBio || user?.email || "Authenticated"}</span></span>
             </button>
           </div>
         </aside>
@@ -1060,7 +1061,7 @@ export default function PortalChat() {
                 </button>
                 <div>
                   <div className="flex items-center gap-2 text-[0.64rem] uppercase tracking-[0.28em] text-[#a7a2c2]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#b8a1ff]" /> KEIRA / Alien intelligence dialogue
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#b8a1ff]" /> KEIRA / local intelligence dialogue
                   </div>
                   <h1 className="mt-2 font-serif text-2xl tracking-tight text-[#f3eadb]">{conversations.find((item) => item.id === activeConversationId)?.title || "New conversation"}</h1>
                 </div>
@@ -1069,7 +1070,7 @@ export default function PortalChat() {
                 <button type="button" onClick={() => setShowMistPanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#cbb8ff] transition hover:border-[#cbb8ff] hover:bg-[#21154d]" aria-label="Open MIST trajectory archive"><Activity className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setShowKeywordPanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#cbb8ff] transition hover:border-[#cbb8ff] hover:bg-[#21154d]" aria-label="Open esoteric signals"><Sparkles className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setShowVoicePanel((current) => !current)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#101a32]" aria-label="Open voice resonance"><Volume2 className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setShowProfilePanel(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#101a32]" aria-label="Open alien profile"><UserRound className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setShowProfilePanel(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#273865] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#101a32]" aria-label="Open operator profile"><UserRound className="h-4 w-4" /></button>
                 <div className="hidden text-right sm:block">
                   <div className="flex items-center justify-end gap-2 text-xs text-[#c7c9d5]"><ShieldCheck className="h-3.5 w-3.5 text-[#e8ddff]" />{cmap?.handshakeComplete ? "Signal active" : "Awaiting Contact"}</div>
                   <div className="mt-1 text-[0.64rem] uppercase tracking-[0.2em] text-[#737b8f]">No fabricated signal</div>
@@ -1200,17 +1201,17 @@ export default function PortalChat() {
             )}
 
             {showProfilePanel && (
-              <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="Alien profile editor">
+              <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="Operator profile editor">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(139,92,246,0.18),transparent_42%)]" />
                 <div className="relative flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><UserRound className="h-4 w-4" /> Alien profile</div>
-                  <button type="button" onClick={() => setShowProfilePanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close alien profile"><X className="h-4 w-4" /></button>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><UserRound className="h-4 w-4" /> Operator profile</div>
+                  <button type="button" onClick={() => setShowProfilePanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close operator profile"><X className="h-4 w-4" /></button>
                 </div>
                 <div className="relative mt-4 grid gap-3 md:grid-cols-2">
-                  <div className="flex flex-wrap items-center gap-2 rounded-none border border-[#273865] bg-[#0d1630] p-2 md:col-span-2"><span className="mr-1 text-[0.62rem] uppercase tracking-[0.16em] text-[#687aa8]">Avatar signal</span>{ALIEN_AVATAR_GLYPHS.map((glyph) => <button key={glyph} type="button" onClick={() => setProfileDraft((draft) => ({ ...draft, avatarGlyph: glyph, avatarUrl: "" }))} className={`grid h-8 w-8 place-items-center rounded-full border text-lg transition ${profileDraft.avatarGlyph === glyph && !profileDraft.avatarUrl ? "border-[#8be9ff] bg-[#21154d] text-[#8be9ff] shadow-[0_0_18px_rgba(6,182,212,0.3)]" : "border-[#273865] text-[#cbb8ff] hover:border-[#8be9ff]"}`} aria-label={`Use ${glyph} avatar`}>{glyph}</button>)}</div>
+                  <div className="flex flex-wrap items-center gap-2 rounded-none border border-[#273865] bg-[#0d1630] p-2 md:col-span-2"><span className="mr-1 text-[0.62rem] uppercase tracking-[0.16em] text-[#687aa8]">Avatar signal</span>{PROFILE_AVATAR_GLYPHS.map((glyph) => <button key={glyph} type="button" onClick={() => setProfileDraft((draft) => ({ ...draft, avatarGlyph: glyph, avatarUrl: "" }))} className={`grid h-8 w-8 place-items-center rounded-full border text-lg transition ${profileDraft.avatarGlyph === glyph && !profileDraft.avatarUrl ? "border-[#8be9ff] bg-[#21154d] text-[#8be9ff] shadow-[0_0_18px_rgba(6,182,212,0.3)]" : "border-[#273865] text-[#cbb8ff] hover:border-[#8be9ff]"}`} aria-label={`Use ${glyph} avatar`}>{glyph}</button>)}</div>
                   <Input aria-label="Custom avatar glyph" value={profileDraft.avatarGlyph} onChange={(event) => setProfileDraft((draft) => ({ ...draft, avatarGlyph: event.target.value, avatarUrl: "" }))} placeholder="Custom avatar glyph" className="rounded-none border-[#273865] bg-[#0d1630] text-[#f4f4f5] placeholder:text-[#687aa8]" />
                   <Input aria-label="Avatar image URL" value={profileDraft.avatarUrl} onChange={(event) => setProfileDraft((draft) => ({ ...draft, avatarUrl: event.target.value }))} placeholder="Avatar image URL (optional)" className="rounded-none border-[#273865] bg-[#0d1630] text-[#f4f4f5] placeholder:text-[#687aa8]" />
-                  <textarea aria-label="Alien bio" value={profileDraft.alienBio} onChange={(event) => setProfileDraft((draft) => ({ ...draft, alienBio: event.target.value }))} placeholder="Write the signal you want others to meet..." className="min-h-24 rounded-none border border-[#273865] bg-[#0d1630] p-3 text-sm leading-6 text-[#f4f4f5] outline-none placeholder:text-[#687aa8] focus:border-[#8be9ff] md:col-span-2" />
+                  <textarea aria-label="Profile bio" value={profileDraft.profileBio} onChange={(event) => setProfileDraft((draft) => ({ ...draft, profileBio: event.target.value }))} placeholder="Write the signal you want others to meet..." className="min-h-24 rounded-none border border-[#273865] bg-[#0d1630] p-3 text-sm leading-6 text-[#f4f4f5] outline-none placeholder:text-[#687aa8] focus:border-[#8be9ff] md:col-span-2" />
                   <Input aria-label="KEIRA persona" value={profileDraft.customPersona} onChange={(event) => setProfileDraft((draft) => ({ ...draft, customPersona: event.target.value }))} placeholder="Optional KEIRA persona or voice" className="rounded-none border-[#273865] bg-[#0d1630] text-[#f4f4f5] placeholder:text-[#687aa8] md:col-span-2" />
                   <textarea aria-label="KEIRA instructions" value={profileDraft.customInstructions} onChange={(event) => setProfileDraft((draft) => ({ ...draft, customInstructions: event.target.value }))} placeholder="Optional instructions for how KEIRA should answer you..." className="min-h-24 rounded-none border border-[#273865] bg-[#0d1630] p-3 text-sm leading-6 text-[#f4f4f5] outline-none placeholder:text-[#687aa8] focus:border-[#8be9ff] md:col-span-2" />
                   <label className="flex items-center gap-2 text-xs text-[#a6aec0]">Response variation <input aria-label="Response variation" type="range" min="0" max="100" value={profileDraft.modelTemperature} onChange={(event) => setProfileDraft((draft) => ({ ...draft, modelTemperature: Number(event.target.value) }))} /></label>

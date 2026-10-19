@@ -116,7 +116,7 @@ export async function promoteUserToOwner(id: number) {
 export async function updateUserProfile(id: number, input: {
   avatarUrl?: string | null;
   avatarGlyph?: string | null;
-  alienBio?: string | null;
+  profileBio?: string | null;
   preferredVoice?: string | null;
   voiceRate?: number;
   voicePitch?: number;

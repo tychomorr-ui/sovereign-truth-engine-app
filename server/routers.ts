@@ -89,7 +89,7 @@ export const appRouter = router({
       .input(z.object({
         avatarUrl: z.string().trim().url().refine((value) => value.startsWith("https://"), "Avatar URL must use HTTPS.").max(2048).nullable().optional(),
         avatarGlyph: z.string().trim().max(16).nullable().optional(),
-        alienBio: z.string().trim().max(600).nullable().optional(),
+        profileBio: z.string().trim().max(600).nullable().optional(),
         preferredVoice: z.string().trim().max(255).nullable().optional(),
         voiceRate: z.number().int().min(60).max(180).optional(),
         voicePitch: z.number().int().min(50).max(150).optional(),
