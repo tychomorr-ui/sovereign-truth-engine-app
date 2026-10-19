@@ -20,6 +20,77 @@ export type BrowserMerkleCommitment = {
   leaves: CommitmentLeaf[];
 };
 
+export type MerkleVerificationReport = {
+  reportType: "KEIRA_MIST_MERKLE_VERIFICATION";
+  schemaVersion: "1.0.0";
+  generatedAt: string;
+  verification: {
+    status: "verified" | "mismatch" | "unavailable";
+    message: string;
+    computedRoot: string | null;
+  };
+  trajectory: {
+    trajectoryId: string;
+    status: string;
+    queryHash: string;
+    queryNormalized: string;
+    documentId: string | null;
+    createdAt: string;
+  };
+  commitment: {
+    algorithm: "SHA-256";
+    savedRoot: string;
+    leafCount: number;
+  };
+  leaves: Array<Pick<CommitmentLeaf, "leafIndex" | "artifactCid" | "leafHash" | "fusionRank" | "rrfScore" | "layerMemberships">>;
+};
+
+export function createMerkleVerificationReport(input: {
+  trajectory: {
+    trajectoryId: string;
+    status: string;
+    queryHash: string;
+    queryNormalized: string;
+    documentId: string | null;
+    createdAt: Date | string;
+    merkle: Pick<BrowserMerkleCommitment, "algorithm" | "root" | "leafCount" | "leaves">;
+  };
+  verification: { status: MerkleVerificationReport["verification"]["status"]; message: string; computedRoot?: string };
+  generatedAt?: string;
+}): MerkleVerificationReport {
+  return {
+    reportType: "KEIRA_MIST_MERKLE_VERIFICATION",
+    schemaVersion: "1.0.0",
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    verification: {
+      status: input.verification.status,
+      message: input.verification.message,
+      computedRoot: input.verification.computedRoot ?? null,
+    },
+    trajectory: {
+      trajectoryId: input.trajectory.trajectoryId,
+      status: input.trajectory.status,
+      queryHash: input.trajectory.queryHash,
+      queryNormalized: input.trajectory.queryNormalized,
+      documentId: input.trajectory.documentId,
+      createdAt: new Date(input.trajectory.createdAt).toISOString(),
+    },
+    commitment: {
+      algorithm: input.trajectory.merkle.algorithm,
+      savedRoot: input.trajectory.merkle.root,
+      leafCount: input.trajectory.merkle.leafCount,
+    },
+    leaves: input.trajectory.merkle.leaves.map(({ leafIndex, artifactCid, leafHash, fusionRank, rrfScore, layerMemberships }) => ({
+      leafIndex,
+      artifactCid,
+      leafHash,
+      fusionRank,
+      rrfScore,
+      layerMemberships: [...layerMemberships],
+    })),
+  };
+}
+
 function leafPayload(trajectory: MistTrajectoryArtifact): unknown {
   return {
     schemaVersion: PERSISTENCE_VERSION,

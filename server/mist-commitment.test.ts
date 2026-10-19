@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canonicalJson, sha256Hex } from "../client/src/lib/corpus/ingest";
-import { buildMerkleRoot, verifyStoredMerkleCommitment, type BrowserMerkleCommitment } from "../client/src/lib/mist/commitment";
+import { buildMerkleRoot, createMerkleVerificationReport, verifyStoredMerkleCommitment, type BrowserMerkleCommitment } from "../client/src/lib/mist/commitment";
 
 async function makeCommitment(): Promise<BrowserMerkleCommitment> {
   const payloads = [
@@ -43,5 +43,32 @@ describe("browser MIST Merkle verification", () => {
 
     const wrongRoot = { ...commitment, root: "0".repeat(64) };
     await expect(verifyStoredMerkleCommitment(wrongRoot)).resolves.toMatchObject({ valid: false, reason: "Stored leaves do not reproduce the saved Merkle root." });
+  });
+
+  it("creates an auditable JSON report without payload blobs or private data", async () => {
+    const commitment = await makeCommitment();
+    const report = createMerkleVerificationReport({
+      generatedAt: "2026-10-18T17:00:00.000Z",
+      trajectory: {
+        trajectoryId: "trajectory-1",
+        status: "COMPLETE",
+        queryHash: "query-hash",
+        queryNormalized: "find the pattern",
+        documentId: "document-1",
+        createdAt: "2026-10-18T16:00:00.000Z",
+        merkle: commitment,
+      },
+      verification: { status: "verified", message: "Root verified.", computedRoot: commitment.root },
+    });
+
+    expect(report).toMatchObject({
+      reportType: "KEIRA_MIST_MERKLE_VERIFICATION",
+      schemaVersion: "1.0.0",
+      generatedAt: "2026-10-18T17:00:00.000Z",
+      verification: { status: "verified", computedRoot: commitment.root },
+      trajectory: { trajectoryId: "trajectory-1", queryHash: "query-hash" },
+      commitment: { algorithm: "SHA-256", savedRoot: commitment.root, leafCount: 2 },
+    });
+    expect(JSON.stringify(report)).not.toContain("payloadJson");
   });
 });
