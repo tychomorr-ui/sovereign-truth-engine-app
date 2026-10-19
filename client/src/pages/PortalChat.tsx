@@ -188,6 +188,7 @@ export default function PortalChat() {
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [showThreads, setShowThreads] = useState(false);
@@ -251,7 +252,6 @@ export default function PortalChat() {
     { conversationId: activeConversationId ?? 0 },
     { enabled: isAuthenticated && activeConversationId !== null },
   );
-  const sendMessageMutation = trpc.portal.chat.sendMessage.useMutation();
   const learningProfileQuery = trpc.portal.chat.getLearningProfile.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -660,15 +660,41 @@ export default function PortalChat() {
     const userMessage = inputValue.trim();
     setInputValue("");
     setSendError(null);
+    setStreamingResponse("");
     setIsLoading(true);
 
     try {
-      const response = await sendMessageMutation.mutateAsync({
-        conversationId: activeConversationId,
-        message: userMessage,
+      const response = await fetch("/api/portal/chat/stream", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ conversationId: activeConversationId, message: userMessage }),
       });
-      setLastMessageMetadata(response.metadata as MessageMetadata);
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error || `Streaming request failed (${response.status}).`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? "";
+        for (const event of events) {
+          const dataLine = event.split(/\r?\n/).find((line) => line.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = JSON.parse(dataLine.slice(5).trim()) as { token?: string; error?: string; metadata?: MessageMetadata };
+          if (payload.token) setStreamingResponse((current) => current + payload.token);
+          if (payload.error) throw new Error(payload.error);
+          if (payload.metadata) setLastMessageMetadata(payload.metadata);
+        }
+        if (done) break;
+      }
       await Promise.all([conversationQuery.refetch(), learningProfileQuery.refetch()]);
+      setStreamingResponse("");
     } catch (error) {
       console.error("Failed to send KEIRA message", error);
       setSendError(error instanceof Error ? error.message : "KEIRA could not complete the request.");
@@ -1363,6 +1389,14 @@ export default function PortalChat() {
                   <div className="flex justify-start" role="status">
                     <div className="border-l border-[#b8a1ff] px-4 py-1 text-sm text-[#a6aec0]">
                       <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#b8a1ff]" /> KEIRA is listening through the noise…
+                    </div>
+                  </div>
+                )}
+                {streamingResponse && (
+                  <div className="flex justify-start" aria-live="polite">
+                    <div className="w-full border-l border-[#8be9ff] px-4 py-1 text-[0.98rem] leading-8 text-[#e7e9ef]">
+                      <div className="mb-2 text-[0.62rem] uppercase tracking-[0.24em] text-[#737b8f]">KEIRA / streaming</div>
+                      <Streamdown>{streamingResponse}</Streamdown>
                     </div>
                   </div>
                 )}

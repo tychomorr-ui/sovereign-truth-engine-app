@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { deterministicResponse, invokeLocal, isLocalModelConfigured, type LocalChatMessage } from "./local-gateway";
 import { ENV } from "./_core/env";
-import type { ContextBoundary } from "./local-model";
+import { getConfiguredLocalModelProvider, type ContextBoundary } from "./local-model";
 
 export type IntelligenceMode = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external";
 export type CapabilityId = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external_provider";
@@ -180,4 +180,67 @@ export async function routeLocalConversation(input: {
     external_fallback: false,
     receipt: createReceipt({ operation, intelligence_mode: selected === "local_tool" ? "local_tool" : "trusted_mesh", provider: null, model: null, context_sources: contextSources, policy: "only implemented local capabilities may execute", verification: "capability reserved or not implemented", result_state: "NOT_IMPLEMENTED" }),
   };
+}
+
+export async function streamLocalConversation(
+  input: {
+    system: string;
+    messages: LocalChatMessage[];
+    operation?: string;
+    contextSources?: string[];
+    requested?: CapabilityId;
+    maxTokens?: number;
+    temperature?: number;
+    topP?: number;
+    contextBoundary?: ContextBoundary;
+  },
+  onToken: (token: string) => void,
+): Promise<IntelligenceResult<{ content: string; modelId: string; provider: string }>> {
+  const operation = input.operation ?? "conversation.generate";
+  const contextSources = input.contextSources ?? [];
+  const selected = resolvePreferredCapability(input.requested);
+
+  if (selected !== "local_model") {
+    const fallback = deterministicResponse(input);
+    onToken(fallback.content);
+    return {
+      status: "ok",
+      value: { content: fallback.content, modelId: fallback.modelId, provider: fallback.provider },
+      external_fallback: false,
+      receipt: createReceipt({ operation, intelligence_mode: "deterministic", provider: "deterministic-engine", model: fallback.modelId, context_sources: contextSources, policy: "deterministic fallback; external providers disabled", verification: "streaming unavailable for selected capability; deterministic response completed", result_state: "PROVEN" }),
+    };
+  }
+
+  try {
+    const provider = getConfiguredLocalModelProvider();
+    const chunks: string[] = [];
+    for await (const token of provider.stream({
+      system: input.system,
+      messages: input.messages,
+      maxTokens: input.maxTokens,
+      temperature: input.temperature,
+      topP: input.topP,
+      contextBoundary: input.contextBoundary,
+    })) {
+      chunks.push(token);
+      onToken(token);
+    }
+    const content = chunks.join("").trim();
+    if (!content) throw new Error("LOCAL_MODEL_UNAVAILABLE: empty streamed response.");
+    return {
+      status: "ok",
+      value: { content, modelId: ENV.localLlmModel, provider: "local" },
+      external_fallback: false,
+      receipt: createReceipt({ operation, intelligence_mode: "local_model", provider: "local", model: ENV.localLlmModel, context_sources: contextSources, policy: "local model streaming allowed; external providers disabled", verification: "local model streamed generated inference; KEIRA verification required", result_state: "GENERATED_INFERENCE" }),
+    };
+  } catch (error) {
+    const fallback = deterministicResponse(input);
+    onToken(fallback.content);
+    return {
+      status: "ok",
+      value: { content: fallback.content, modelId: fallback.modelId, provider: fallback.provider },
+      external_fallback: false,
+      receipt: createReceipt({ operation, intelligence_mode: "deterministic", provider: "deterministic-engine", model: fallback.modelId, context_sources: contextSources, policy: "local stream failure may use deterministic fallback; external providers disabled", verification: `local model stream failed; deterministic fallback completed (${error instanceof Error ? error.message : "unknown error"})`, result_state: "PARTIALLY_PROVEN" }),
+    };
+  }
 }

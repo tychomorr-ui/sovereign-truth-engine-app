@@ -12,6 +12,7 @@ import { keiraIdentityRootSecretHealthHandler } from "../keira-identity-health";
 import { betaOpenStatusHandler } from "../beta-open-status";
 import { registerStorageProxy } from "./storageProxy";
 import { signTrajectoryHandler } from "../trajectory-attestation";
+import { streamPortalMessage } from "../portal-chat-stream";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -49,6 +50,35 @@ async function startServer() {
   app.get("/api/beta-status", betaOpenStatusHandler);
   app.get("/api/keira-identity/health", keiraIdentityRootSecretHealthHandler);
   app.post("/api/keira/sign-trajectory", (req, res) => signTrajectoryHandler(req, res));
+  app.post("/api/portal/chat/stream", async (req, res) => {
+    const context = await createContext({ req, res, info: { isBatchCall: false } as any });
+    if (!context.user) {
+      res.status(401).json({ error: "Authentication required." });
+      return;
+    }
+    const conversationId = Number(req.body?.conversationId);
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!Number.isInteger(conversationId) || conversationId < 1 || !message) {
+      res.status(400).json({ error: "conversationId and message are required." });
+      return;
+    }
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    const writeEvent = (event: string, payload: unknown) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+    };
+    try {
+      const result = await streamPortalMessage(context.user.id, conversationId, message, (token) => writeEvent("token", { token }));
+      writeEvent("done", result);
+    } catch (error) {
+      writeEvent("error", { error: error instanceof Error ? error.message : "KEIRA could not complete the request." });
+    } finally {
+      res.end();
+    }
+  });
   // Public identity material contains KEIRA's public key and signed receipt only.
   // It intentionally never creates keys, emits private material, or calls ARCHANGEL.
   app.get("/.well-known/keira-identity.json", async (_req, res) => {

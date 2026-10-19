@@ -5,7 +5,7 @@
  * strategy-specific approaches, and learning memory updates.
  */
 
-import { routeLocalConversation } from "./sovereign-bus";
+import { routeLocalConversation, streamLocalConversation } from "./sovereign-bus";
 import type { UserContext } from "./portal-context-retrieval";
 import { formatContextForLLM } from "./portal-context-retrieval";
 import type { StrategySelection, DialogueStrategy } from "./portal-strategy-selector";
@@ -54,6 +54,7 @@ export async function generateAdaptiveResponse(
   strategy: StrategySelection,
   recentMessages: Array<{ role: 'user' | 'portal'; content: string }>,
   responseVariation?: number,
+  onToken?: (token: string) => void,
 ): Promise<AdaptiveResponse> {
   try {
     const contextLedger = ((context as any).contextLedger ?? []) as Array<{ label: string; content: string; kind: string }>;
@@ -86,7 +87,18 @@ export async function generateAdaptiveResponse(
     const messages = buildMessageHistory(userMessage, recentMessages, context, strategy);
 
     const normalizedVariation = Math.max(0, Math.min(1, Number.isFinite(responseVariation) ? Number(responseVariation) / 100 : 0.1));
-    const localResult = await routeLocalConversation({
+    const localResult = onToken
+      ? await streamLocalConversation({
+        system: systemPrompt,
+        messages,
+        requested: "local_model",
+        operation: "portal.conversation.generate",
+        contextSources: ["conversation-history", "learning-profile", ...memoryAssembly.suppliedMemoryIds.map((id) => `memory:${id}`), ...memoryAssembly.unavailable.map((item) => `unavailable:${item}`)],
+        maxTokens: Math.max(256, Math.min(ENV.localLlmMaxTokens, 2048)),
+        temperature: normalizedVariation,
+        topP: Math.max(0.6, Math.min(1, 0.8 + normalizedVariation * 0.2)),
+      }, onToken)
+      : await routeLocalConversation({
       system: systemPrompt,
       messages,
       requested: "local_model",

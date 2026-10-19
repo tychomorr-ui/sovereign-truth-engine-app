@@ -38,6 +38,25 @@ describe("Stage 3 local model provider", () => {
     expect(result.provider).toBe("vllm");
   });
 
+  it("streams incremental OpenAI-compatible SSE tokens", async () => {
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { stream?: boolean };
+      expect(body.stream).toBe(true);
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'));
+          controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n'));
+          controller.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } });
+    }) as typeof fetch;
+    const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:11434/v1", "model", "ollama");
+    const tokens: string[] = [];
+    for await (const token of provider.stream({ system: "system", messages: [{ role: "user", content: "hello" }] })) tokens.push(token);
+    expect(tokens).toEqual(["Hello", " world"]);
+  });
+
   it("fails closed for missing configuration and prohibited external processing", async () => {
     const unconfigured = new OpenAiCompatibleLocalProvider("", "", "ollama");
     await expect(unconfigured.generate({ system: "", messages: [] })).rejects.toThrow("LOCAL_MODEL_UNAVAILABLE");

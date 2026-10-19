@@ -176,8 +176,79 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
   }
 
   async *stream(request: ModelRequest): AsyncIterable<string> {
-    const result = await this.generate(request);
-    yield result.content;
+    if (request.contextBoundary === "PROHIBITED_FOR_EXTERNAL_PROCESSING" || request.contextBoundary === "EXTERNAL_AUTHORIZED") {
+      throw new Error("External processing boundary is not accepted by the local provider.");
+    }
+    if (!this.endpoint || !this.model) throw new Error("LOCAL_MODEL_UNAVAILABLE: local model is not configured.");
+
+    const requestId = randomUUID();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ENV.localLlmTimeoutMs);
+    this.active.set(requestId, controller);
+    if (request.signal) request.signal.addEventListener("abort", () => controller.abort(), { once: true });
+
+    try {
+      const response = await fetch(`${this.endpoint}/chat/completions`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json", ...(ENV.localLlmApiKey ? { Authorization: `Bearer ${ENV.localLlmApiKey}` } : {}) },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: "system", content: request.system }, ...request.messages],
+          max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
+          temperature: request.temperature ?? ENV.localLlmTemperature,
+          top_p: request.topP ?? ENV.localLlmTopP,
+          seed: request.seed ?? ENV.localLlmSeed,
+          stream: true,
+        }),
+      });
+      if (!response.ok) throw new Error(`LOCAL_MODEL_UNAVAILABLE: runtime returned HTTP ${response.status}.`);
+      if (!response.body) throw new Error("LOCAL_MODEL_UNAVAILABLE: runtime returned no streaming body.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let emitted = false;
+      const parse = (line: string): string | null => {
+        if (!line.startsWith("data:")) return null;
+        const data = line.slice(5).trim();
+        if (!data || data === "[DONE]") return null;
+        try {
+          const payload = JSON.parse(data) as { choices?: Array<{ delta?: { content?: unknown } }> };
+          const token = payload.choices?.[0]?.delta?.content;
+          return typeof token === "string" && token.length > 0 ? token : null;
+        } catch {
+          return null;
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const token = parse(line);
+          if (token) {
+            emitted = true;
+            yield token;
+          }
+        }
+        if (done) break;
+      }
+      const finalToken = parse(buffer);
+      if (finalToken) {
+        emitted = true;
+        yield finalToken;
+      }
+      if (!emitted) throw new Error("LOCAL_MODEL_UNAVAILABLE: runtime returned an empty stream.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw new Error("LOCAL_MODEL_UNAVAILABLE: local model stream timed out or was cancelled.");
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+      this.active.delete(requestId);
+    }
   }
 
   async generateStructured(request: ModelRequest, schema: Record<string, unknown>): Promise<ModelResult> {
