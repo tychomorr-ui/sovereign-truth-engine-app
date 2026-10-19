@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { createConnection } from "mysql2/promise";
 
 if (process.env.RESET_AUTH_CONFIRM !== "RESET_AUTH") {
@@ -27,8 +28,18 @@ try {
   const [countRows] = await connection.query("SELECT COUNT(*) AS count FROM users");
   const count = Number((countRows as Array<{ count: number }>)[0]?.count ?? 0);
   await connection.query("DELETE FROM users");
+  const envPath = "/opt/keira/.env";
+  const envFile = await import("node:fs/promises");
+  const currentEnv = await envFile.readFile(envPath, "utf8");
+  const nextJwtSecret = randomBytes(32).toString("hex");
+  const jwtLine = `JWT_SECRET=${nextJwtSecret}`;
+  const nextEnv = /^JWT_SECRET=.*$/m.test(currentEnv)
+    ? currentEnv.replace(/^JWT_SECRET=.*$/m, jwtLine)
+    : `${currentEnv.trimEnd()}\n${jwtLine}\n`;
+  await envFile.writeFile(envPath, nextEnv, { mode: 0o600 });
   console.log(`Reset complete: removed ${count} auth account(s).`);
   console.log(`Auth backup table: ${backupTable}`);
+  console.log("JWT_SECRET rotated; all previous sessions are invalid after the app restarts.");
   console.log("Conversations, messages, memory, trajectories, receipts, and identity data were not deleted.");
 } finally {
   await connection.end();
