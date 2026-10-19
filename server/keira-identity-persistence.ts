@@ -1,3 +1,4 @@
+import { createPrivateKey, createPublicKey, sign } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
@@ -200,5 +201,23 @@ export async function getKeiraPublicIdentityStatus(): Promise<KeiraPublicIdentit
     receipt: verification.valid ? receipt : null,
     verification,
     reason: verification.valid ? "KEIRA signed receipt verified from the stored public manifest." : verification.reason,
+  };
+}
+
+/**
+ * Signs an external audit root with KEIRA's existing durable identity key.
+ * The decrypted private key exists only in this server call and is never returned.
+ */
+export async function signWithKeiraIdentityKey(trajectoryRootCid: string): Promise<{ signature_hex: string; pubkey_hex: string; key_id: string }> {
+  const key = await getOrCreateKeiraIdentityKey();
+  const privateKeyPem = decryptKeiraPrivateKey(key.encryptedPrivateKey, requireIdentityRootSecret());
+  const privateKey = createPrivateKey(privateKeyPem);
+  if (privateKey.asymmetricKeyType !== "ed25519") throw new Error("KEIRA durable identity key is not Ed25519.");
+  const publicKey = createPublicKey(privateKey);
+  const publicKeyDer = publicKey.export({ type: "spki", format: "der" });
+  return {
+    signature_hex: sign(null, Buffer.from(trajectoryRootCid, "utf8"), privateKey).toString("hex"),
+    pubkey_hex: publicKeyDer.subarray(-32).toString("hex"),
+    key_id: key.keyId,
   };
 }

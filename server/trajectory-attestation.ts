@@ -1,6 +1,6 @@
 import { createPrivateKey, createPublicKey, sign, type KeyObject } from "node:crypto";
 import type { Request, Response } from "express";
-import { ENV } from "./_core/env";
+import { signWithKeiraIdentityKey } from "./keira-identity-persistence";
 
 const ROOT_HEX_PATTERN = /^[a-f0-9]{64}$/i;
 
@@ -15,26 +15,27 @@ function normalizePrivateKeyMaterial(value: string): string | { key: Buffer; for
 
 function publicKeyHex(privateKey: KeyObject): string {
   const publicKey = createPublicKey(privateKey);
-  if (publicKey.asymmetricKeyType !== "ed25519") throw new Error("KEIRA_PRIVATE_KEY must contain an Ed25519 private key.");
+  if (publicKey.asymmetricKeyType !== "ed25519") throw new Error("The injected signing key must contain an Ed25519 private key.");
   const spki = publicKey.export({ type: "spki", format: "der" });
   return spki.subarray(-32).toString("hex");
 }
 
-export function signTrajectoryRoot(trajectoryRootCid: string, privateKeyPem = ENV.keiraPrivateKey): { signature_hex: string; pubkey_hex: string } {
+export function signTrajectoryRoot(trajectoryRootCid: string, privateKeyPem: string): { signature_hex: string; pubkey_hex: string } {
   if (!ROOT_HEX_PATTERN.test(trajectoryRootCid)) throw new Error("trajectory_root_cid must be a 64-character SHA-256 hex root.");
-  if (!privateKeyPem) throw new Error("KEIRA trajectory signing is unavailable because KEIRA_PRIVATE_KEY is not configured.");
+  if (!privateKeyPem) throw new Error("A private key is required for the isolated direct signer.");
   const privateKey = createPrivateKey(normalizePrivateKeyMaterial(privateKeyPem));
-  if (privateKey.asymmetricKeyType !== "ed25519") throw new Error("KEIRA_PRIVATE_KEY must contain an Ed25519 private key.");
+  if (privateKey.asymmetricKeyType !== "ed25519") throw new Error("The injected signing key must contain an Ed25519 private key.");
   return {
     signature_hex: sign(null, Buffer.from(trajectoryRootCid, "utf8"), privateKey).toString("hex"),
     pubkey_hex: publicKeyHex(privateKey),
   };
 }
 
-export function signTrajectoryHandler(req: Request, res: Response, privateKeyPem = ENV.keiraPrivateKey): void {
+export async function signTrajectoryHandler(req: Request, res: Response, privateKeyPem?: string): Promise<void> {
   const trajectoryRootCid = typeof req.body?.trajectory_root_cid === "string" ? req.body.trajectory_root_cid.trim() : "";
   try {
-    const signed = signTrajectoryRoot(trajectoryRootCid, privateKeyPem);
+    if (!ROOT_HEX_PATTERN.test(trajectoryRootCid)) throw new Error("trajectory_root_cid must be a 64-character SHA-256 hex root.");
+    const signed = privateKeyPem ? signTrajectoryRoot(trajectoryRootCid, privateKeyPem) : await signWithKeiraIdentityKey(trajectoryRootCid);
     res.status(200).json({
       algorithm: "Ed25519",
       encoding: "hex",

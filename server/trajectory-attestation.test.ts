@@ -30,12 +30,12 @@ describe("KEIRA trajectory attestation", () => {
     expect(() => signTrajectoryRoot("ab".repeat(32), rsaPem)).toThrow(/Ed25519/);
   });
 
-  it("validates the lightweight signing endpoint contract without exposing private material", () => {
+  it("validates the lightweight signing endpoint contract without exposing private material", async () => {
     const { privateKey } = generateKeyPairSync("ed25519");
     const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
     let statusCode = 0;
     let body: Record<string, string> | undefined;
-    signTrajectoryHandler(
+    await signTrajectoryHandler(
       { body: { trajectory_root_cid: "cd".repeat(32) } } as never,
       {
         status: (code: number) => { statusCode = code; return { json: (value: Record<string, string>) => { body = value; } }; },

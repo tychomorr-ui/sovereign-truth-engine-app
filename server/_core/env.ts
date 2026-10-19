@@ -2,7 +2,6 @@ export const ENV = {
   cookieSecret: process.env.JWT_SECRET ?? "",
   portalOwnerAccessToken: process.env.PORTAL_OWNER_ACCESS_TOKEN ?? "",
   keiraIdentityRootSecret: process.env.KEIRA_IDENTITY_ROOT_SECRET ?? "",
-  keiraPrivateKey: process.env.KEIRA_PRIVATE_KEY ?? "",
   betaOpenMode: process.env.BETA_OPEN_MODE === "true",
   databaseUrl: process.env.DATABASE_URL ?? "",
   isProduction: process.env.NODE_ENV === "production",
