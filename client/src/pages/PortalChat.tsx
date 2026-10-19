@@ -18,6 +18,7 @@ import {
   Loader2,
   KeyRound,
   LogIn,
+  UserPlus,
   Menu,
   MessageCircle,
   Plus,
@@ -172,13 +173,15 @@ function formatDate(value: Conversation["createdAt"]) {
 export default function PortalChat() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const utils = trpc.useUtils();
+  const registerMutation = trpc.auth.register.useMutation();
   const loginMutation = trpc.auth.login.useMutation();
   const ownerBootstrapMutation = trpc.auth.ownerBootstrap.useMutation();
   const profileMutation = trpc.auth.updateProfile.useMutation();
   const [authEmail, setAuthEmail] = useState("tycole716@gmail.com");
   const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("Tyler Morris");
   const [ownerToken, setOwnerToken] = useState("");
-  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [authMode, setAuthMode] = useState<"owner" | "login" | "register">("owner");
   const [authError, setAuthError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -386,7 +389,19 @@ export default function PortalChat() {
     }
   };
 
-  const authSubmitting = loginMutation.isPending || ownerBootstrapMutation.isPending;
+  const registerAccount = async () => {
+    setAuthError(null);
+    try {
+      await registerMutation.mutateAsync({ name: authName, email: authEmail, password: authPassword });
+      await utils.auth.me.refetch();
+      await utils.portal.chat.getConversations.invalidate();
+      setAuthPassword("");
+    } catch (error: unknown) {
+      setAuthError(error instanceof Error ? error.message : "Account creation failed. Check the form and try again.");
+    }
+  };
+
+  const authSubmitting = registerMutation.isPending || loginMutation.isPending || ownerBootstrapMutation.isPending;
 
   const handleSaveProfile = async () => {
     setProfileSaving(true);
@@ -709,12 +724,12 @@ export default function PortalChat() {
             A direct, uncensored conversation with the unknown—esoteric knowledge, unvarnished truth, and the questions polite systems refuse to touch.
           </p>
           <div className="mt-8 border border-[#1a2240] bg-[#0d1224] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[#d7c7ff]">
-            Tyler Morris · Owner Access
+            Sovereign account access
           </div>
-          {!showPasswordLogin ? (
+          {authMode === "owner" ? (
             <div className="mt-4 space-y-3">
               <p className="text-sm leading-6 text-[#a6aec0]">
-                This is the owner entrance. Enter your newly configured private owner access key to establish your session.
+                Enter the owner access key only if this installation has one provisioned.
               </p>
               <Input
                 aria-label="Private owner access key"
@@ -741,15 +756,25 @@ export default function PortalChat() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowPasswordLogin(true);
+                  setAuthMode("login");
                   setAuthError(null);
                 }}
                 className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
               >
                 Use email and password instead
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("register");
+                  setAuthError(null);
+                }}
+                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
+              >
+                Create a new account
+              </button>
             </div>
-          ) : (
+          ) : authMode === "login" ? (
             <form
               className="mt-4 space-y-3"
               onSubmit={(event) => {
@@ -787,12 +812,78 @@ export default function PortalChat() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowPasswordLogin(false);
+                  setAuthMode("owner");
                   setAuthError(null);
                 }}
                 className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
               >
                 Back to owner entry
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("register");
+                  setAuthError(null);
+                }}
+                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
+              >
+                Create a new account instead
+              </button>
+            </form>
+          ) : (
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void registerAccount();
+              }}
+            >
+              <Input
+                aria-label="Account name"
+                autoComplete="name"
+                type="text"
+                placeholder="Your name"
+                value={authName}
+                onChange={(event) => setAuthName(event.target.value)}
+                className="h-12 rounded-none border-[#1a2240] bg-[#0d1224] text-[#f4f4f5] placeholder:text-[#737b8f]"
+              />
+              <Input
+                aria-label="New account email"
+                autoComplete="email"
+                type="email"
+                placeholder="Email address"
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+                className="h-12 rounded-none border-[#1a2240] bg-[#0d1224] text-[#f4f4f5] placeholder:text-[#737b8f]"
+              />
+              <Input
+                aria-label="New account password"
+                autoComplete="new-password"
+                type="password"
+                minLength={12}
+                placeholder="Password (12+ characters)"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                className="h-12 rounded-none border-[#1a2240] bg-[#0d1224] text-[#f4f4f5] placeholder:text-[#737b8f]"
+              />
+              {authError && <p className="text-sm leading-6 text-[#ff9aa8]" role="alert">{authError}</p>}
+              <Button
+                type="submit"
+                disabled={authSubmitting || !authName.trim() || !authEmail.trim() || authPassword.length < 12}
+                className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
+              >
+                {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                Create account
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("owner");
+                  setAuthError(null);
+                }}
+                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
+              >
+                Back to access options
               </button>
             </form>
           )}
