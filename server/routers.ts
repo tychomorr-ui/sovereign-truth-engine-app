@@ -16,6 +16,10 @@ import type { MistResult } from "../client/src/lib/mist/types";
 import { listBoomerangTrajectories, persistBoomerangTrajectory, readBoomerangTrajectory } from "./boomerang-persistence";
 import type { BoomerangSwarmResult } from "../client/src/lib/boomerang/types";
 
+export function canClaimResetAccount(user: { loginMethod: string | null; passwordHash: string | null } | null | undefined) {
+  return user?.loginMethod === "auth-reset" && !user.passwordHash;
+}
+
 /**
  * Sovereign Portal API surface.
  * Legacy reflection, knowledge-graph, Stripe, and platform-system endpoints are
@@ -34,6 +38,17 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const email = input.email.trim().toLowerCase();
         const existing = await db.getUserByEmail(email);
+        if (existing && canClaimResetAccount(existing)) {
+          const claimed = await db.setSovereignCredentials({
+            userId: existing.id,
+            email,
+            name: input.name,
+            passwordHash: await hashPassword(input.password),
+          });
+          if (!claimed) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Account claim failed." });
+          setSessionCookie(ctx.req, ctx.res, await createSessionToken({ userId: claimed.id, name: claimed.name || input.name }));
+          return claimed;
+        }
         if (existing) {
           throw new TRPCError({ code: "CONFLICT", message: "An account already exists for that email." });
         }
