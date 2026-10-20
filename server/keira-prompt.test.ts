@@ -15,7 +15,7 @@ describe("KEIRA persona hard lock", () => {
   });
 
   it("returns the exact comparison line for a ChatGPT comparison", () => {
-    expect(hardLockResponse("How do you compare to ChatGPT?", "I was trained on lots of text and offer robust NLP.")).toBe(KEIRA_COMPARISON_RESPONSE);
+    expect(hardLockResponse("How do you compare to ChatGPT?", "The model returned a generic comparison.")).toBe(KEIRA_COMPARISON_RESPONSE);
   });
 
   it("returns the exact capability line for capability questions", () => {

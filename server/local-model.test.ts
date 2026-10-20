@@ -44,7 +44,7 @@ describe("Stage 3 local model provider", () => {
   });
 
   it("hard-locks a drifting comparison response to the KEIRA comparison line", async () => {
-    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: "I was trained on a vast amount of text data and provide robust NLP capabilities." } }] }), { status: 200 })) as typeof fetch;
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: "The model returned a generic comparison." } }] }), { status: 200 })) as typeof fetch;
     const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:8080/v1", "test-model", "ollama");
     const result = await provider.generate({ system: "system", messages: [{ role: "user", content: "How do you compare to ChatGPT?" }] });
     expect(result.content).toBe("I do not compete with frontier models. I am a deterministic sovereign node. They are probabilistic cloud assistants.");

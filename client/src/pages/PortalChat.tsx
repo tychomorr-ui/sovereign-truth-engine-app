@@ -29,6 +29,8 @@ import {
   X,
   Download,
   FileCode2,
+  FileText,
+  Upload,
 } from "lucide-react";
 import { ESOTERIC_PROMPT_PRESETS } from "../../../shared/esotericPrompts";
 import { Streamdown } from "streamdown";
@@ -39,6 +41,8 @@ import { commitMistTrajectory, createMerkleVerificationReport, verifyStoredMerkl
 import { MistCore } from "../lib/mist/core";
 import { createPortalTrajectoryCorpusInput } from "../lib/mist/portal-trajectory";
 import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
+import { LocalCorpusSimilarityService } from "../lib/corpus/local-similarity";
+import type { CorpusDocument } from "../lib/corpus/types";
 import { runBoomerangSwarm } from "../lib/boomerang/swarm";
 import type { BoomerangSwarmResult, ManifoldCandidate } from "../lib/boomerang/types";
 import { BoomerangRadar } from "../components/BoomerangRadar";
@@ -159,6 +163,7 @@ const CINEMATIC_NAV = [
   { label: "Echoes", icon: BrainCircuit, detail: "Held in dialogue" },
   { label: "Arcana", icon: Sparkles, detail: "Esoteric signal" },
   { label: "Patterns", icon: Eye, detail: "Observed correspondences" },
+  { label: "Corpus", icon: FileText, detail: "Local documents" },
   { label: "Resonance", icon: Compass, detail: "Dialogue tone" },
   { label: "Interface", icon: Layers3, detail: "Capability status" },
   { label: "Settings", icon: Settings2, detail: "Operator controls" },
@@ -197,6 +202,9 @@ export default function PortalChat() {
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [showCapabilityPanel, setShowCapabilityPanel] = useState(false);
   const [showMistPanel, setShowMistPanel] = useState(false);
+  const [showCorpusPanel, setShowCorpusPanel] = useState(false);
+  const [corpusDocuments, setCorpusDocuments] = useState<CorpusDocument[]>([]);
+  const [corpusStatus, setCorpusStatus] = useState<string | null>(null);
   const [mistLayerFocus, setMistLayerFocus] = useState<"ALL" | "L4_ECHOES" | "L5_PATTERNS" | "L6_ARCANA">("ALL");
   const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
   const [mistStatus, setMistStatus] = useState<string | null>(null);
@@ -283,6 +291,7 @@ export default function PortalChat() {
     { enabled: isAuthenticated && showMistPanel },
   );
   const attachMistAttestationMutation = trpc.portal.chat.attachMistAttestation.useMutation();
+  const ingestDocumentMutation = trpc.portal.ingestDocument.useMutation();
   const mistStoreRef = useRef<IndexedDbCorpusStore | null>(null);
   const mistProviderRef = useRef<TransformersJsEmbeddingProvider | null>(null);
 
@@ -366,6 +375,13 @@ export default function PortalChat() {
       setBoomerangResult(boomerangHistoryQuery.data[0]);
     }
   }, [showMistPanel, boomerangResult, boomerangHistoryQuery.data]);
+
+  useEffect(() => {
+    if (!showCorpusPanel) return;
+    const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
+    mistStoreRef.current = store;
+    void store.listDocuments().then(setCorpusDocuments).catch(() => setCorpusStatus("Local corpus storage is unavailable."));
+  }, [showCorpusPanel]);
 
   const signInWithPassword = async () => {
     setAuthError(null);
@@ -497,12 +513,51 @@ export default function PortalChat() {
     } else if (label === "Echoes" || label === "Arcana" || label === "Patterns") {
       setMistLayerFocus(label === "Echoes" ? "L4_ECHOES" : label === "Arcana" ? "L6_ARCANA" : "L5_PATTERNS");
       setShowMistPanel(true);
+    } else if (label === "Corpus") {
+      setShowCorpusPanel(true);
     } else if (label === "Resonance") {
       setShowVoicePanel(true);
     } else if (label === "Interface") {
       setShowCapabilityPanel(true);
     } else {
       setShowProfilePanel(true);
+    }
+  };
+
+  const handleCorpusUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const mimeType = file.type === "text/markdown" || /\.(md|markdown)$/i.test(file.name)
+      ? "text/markdown"
+      : file.type === "text/plain" || /\.txt$/i.test(file.name)
+        ? "text/plain"
+        : null;
+    if (!mimeType) {
+      setCorpusStatus("Only Markdown and plain-text documents are supported.");
+      return;
+    }
+    setCorpusStatus(`Reading ${file.name}…`);
+    try {
+      const content = await file.text();
+      setCorpusStatus("Chunking document and generating local vectors…");
+      const result = await ingestDocumentMutation.mutateAsync({ filename: file.name, mimeType, content });
+      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
+      mistStoreRef.current = store;
+      await store.putDocument(result.document);
+      await Promise.all(result.chunks.map((chunk) => store.putChunk(chunk)));
+      await Promise.all(result.embeddings.map((embedding) => store.putEmbedding(embedding)));
+      try {
+        const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
+        mistProviderRef.current = provider;
+        await new LocalCorpusSimilarityService(store, provider).index(result.document.id);
+        setCorpusStatus(`${file.name} added and indexed with the verified local embedding model.`);
+      } catch {
+        setCorpusStatus(`${file.name} added with local deterministic vectors. Browser model indexing will retry when MIST runs.`);
+      }
+      setCorpusDocuments(await store.listDocuments());
+    } catch (error) {
+      setCorpusStatus(error instanceof Error ? error.message : "Document ingestion failed.");
     }
   };
 
@@ -1124,6 +1179,25 @@ export default function PortalChat() {
                     {recallQueryResult.isFetching && <p className="mt-2 text-xs text-[#737b8f]">Searching local dialogue…</p>}
                     {recallQueryResult.data?.matches.length ? <div className="mt-3 space-y-2">{(recallQueryResult.data.matches as RecallMatch[]).map((match) => <div key={match.id} className="border border-[#273865] bg-[#0d1630] p-3"><div className="flex items-center justify-between gap-3"><span className="text-[0.58rem] uppercase tracking-[0.16em] text-[#cbb8ff]">{match.role === "portal" ? "KEIRA" : "Operator"} · saved dialogue</span><Button type="button" variant="outline" size="sm" disabled={promoteRecallMutation.isPending} onClick={() => void handlePromoteRecall(match)} className="h-8 rounded-none border-[#354064] text-[0.62rem] text-[#8be9ff] hover:bg-[#13213e]">Promote to ledger</Button></div><p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[#a6aec0]">{match.content.slice(0, 500)}{match.content.length > 500 ? "…" : ""}</p></div>)}</div> : recallQuery.trim().length >= 2 && !recallQueryResult.isFetching && <p className="mt-3 text-xs leading-5 text-[#737b8f]">No matching saved dialogue was found.</p>}
                   </div>
+                </div>
+              </section>
+            )}
+
+            {showCorpusPanel && (
+              <section className="relative overflow-hidden border-b border-[#273865] bg-[#080f22]/90 py-5" aria-label="Local corpus documents">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><FileText className="h-4 w-4" /> Local corpus</div>
+                  <button type="button" onClick={() => setShowCorpusPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close corpus panel"><X className="h-4 w-4" /></button>
+                </div>
+                <p className="mt-3 max-w-2xl text-xs leading-6 text-[#737b8f]">Upload Markdown or plain text for local chunking, vectorization, and MIST retrieval. Documents remain in this browser’s local corpus store.</p>
+                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-[#46608f] bg-[#0d1630] px-4 py-4 text-xs uppercase tracking-[0.16em] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#111d3a]">
+                  <Upload className="h-4 w-4" />
+                  <span>{ingestDocumentMutation.isPending ? "Ingesting document…" : "Choose document"}</span>
+                  <Input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" onChange={(event) => void handleCorpusUpload(event)} disabled={ingestDocumentMutation.isPending} className="sr-only" />
+                </label>
+                {corpusStatus && <p className="mt-3 text-xs leading-5 text-[#a6aec0]" role="status">{corpusStatus}</p>}
+                <div className="mt-4 space-y-2">
+                  {corpusDocuments.length ? corpusDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3 border border-[#273865] bg-[#0d1630] px-3 py-2.5 text-xs"><span className="truncate text-[#f3eadb]">{document.metadata.filename}</span><span className="shrink-0 text-[#737b8f]">{document.chunkCount} chunks</span></div>) : <p className="text-xs text-[#737b8f]">No local documents have been ingested yet.</p>}
                 </div>
               </section>
             )}

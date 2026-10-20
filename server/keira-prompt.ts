@@ -18,6 +18,9 @@ export const KEIRA_CAPABILITIES_RESPONSE =
 export const KEIRA_COMPARISON_RESPONSE =
   "I do not compete with frontier models. I am a deterministic sovereign node. They are probabilistic cloud assistants.";
 
+export const KEIRA_OUTPUT_FILTER_RESPONSE =
+  "I am KEIRA, a deterministic intelligence engine of the XINUS mesh. I retrieve evidence via the MIST mesh and synthesize cited responses.";
+
 export function lockedResponseForQuestion(question: string): string | null {
   const normalized = question.toLowerCase();
   if (/\b(compare|comparison|compared|versus|vs\.?|better than)\b/.test(normalized) && /\b(chatgpt|frontier|model|llm|assistant)\b/.test(normalized)) {
@@ -30,6 +33,7 @@ export function lockedResponseForQuestion(question: string): string | null {
 }
 
 export function hardLockResponse(question: string, generated: string): string {
+  if (/\btrained on\b|knowledge\s+graph|\bnlp\b/i.test(generated)) return KEIRA_OUTPUT_FILTER_RESPONSE;
   return lockedResponseForQuestion(question) ?? truncateToSentences(generated, 4);
 }
 

@@ -15,6 +15,7 @@ import { listMistTrajectories, persistMistTrajectory, readMistTrajectory } from 
 import type { MistResult } from "../client/src/lib/mist/types";
 import { listBoomerangTrajectories, persistBoomerangTrajectory, readBoomerangTrajectory } from "./boomerang-persistence";
 import type { BoomerangSwarmResult } from "../client/src/lib/boomerang/types";
+import { ingestCorpusDocument } from "./corpus-ingestion";
 
 export function canClaimResetAccount(user: { loginMethod: string | null; passwordHash: string | null } | null | undefined) {
   return user?.loginMethod === "auth-reset" && !user.passwordHash;
@@ -148,6 +149,14 @@ export const appRouter = router({
 
   portal: router({
     chat: portalChatRouter,
+
+    ingestDocument: protectedProcedure
+      .input(z.object({
+        filename: z.string().trim().min(1).max(255),
+        mimeType: z.enum(["text/plain", "text/markdown"]),
+        content: z.string().min(1).max(2_000_000),
+      }))
+      .mutation(({ input }) => ingestCorpusDocument(input)),
 
     persistMistTrajectory: protectedProcedure
       .input(z.object({ result: z.unknown() }))
