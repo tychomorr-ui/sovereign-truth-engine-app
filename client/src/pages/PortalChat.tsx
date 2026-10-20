@@ -949,7 +949,7 @@ export default function PortalChat() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-[0.65rem] uppercase tracking-[0.32em] text-[#f5ede3]">KEIRA</div>
-                <div className="mt-1 text-[0.58rem] uppercase tracking-[0.22em] text-[#737b8f]">Dialogue with the unknown</div>
+                <div className="mt-1 text-[0.58rem] uppercase tracking-[0.22em] text-[#737b8f]">Start a new conversation</div>
               </div>
               <div className="grid h-9 w-9 place-items-center rounded-full border border-[#354064] text-[#f5ede3]" aria-hidden="true">
                 <Sparkles className="h-4 w-4" />
