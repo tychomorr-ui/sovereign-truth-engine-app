@@ -41,29 +41,40 @@ The deterministic lane provides normalization, lexical classification, contradic
 The local gateway speaks the common OpenAI-compatible `/v1/chat/completions` and `/v1/models` shapes. This permits Ollama, llama.cpp server, vLLM, or another local-compatible runtime without changing KEIRA's memory, identity, policy, orchestration, or API contracts:
 
 ```bash
-LOCAL_LLM_RUNTIME=ollama
-LOCAL_LLM_BASE_URL=http://127.0.0.1:11434/v1
-LOCAL_LLM_MODEL=your-installed-model
-LOCAL_LLM_API_KEY=
+KEIRA_LLM_RUNTIME=ollama
+KEIRA_LLM_ENDPOINT=http://127.0.0.1:11434/v1
+KEIRA_LLM_MODEL=your-installed-model
+KEIRA_LLM_API_KEY=
+KEIRA_LLM_FALLBACK_MODEL=
+KEIRA_LLM_MAX_TOKENS=4096
+KEIRA_LLM_NUM_CTX=2048
+KEIRA_LLM_TEMPERATURE=0
+KEIRA_LLM_TOP_P=1
+KEIRA_LLM_SEED=42
+KEIRA_LLM_TIMEOUT_MS=60000
 ```
 
-For production deployments, the explicit aliases `KEIRA_LLM_ENDPOINT`,
-`KEIRA_LLM_MODEL`, and optional `KEIRA_LLM_RUNTIME` are also accepted. The
-canonical Singapore configuration is:
+The canonical Singapore configuration is:
 
 ```bash
 KEIRA_LLM_RUNTIME=ollama
 KEIRA_LLM_ENDPOINT=http://10.9.0.1:11434/v1
 KEIRA_LLM_MODEL=llama3.2:3b
 KEIRA_LLM_FALLBACK_MODEL=llama3.2:1b
-LOCAL_LLM_NUM_CTX=2048
+KEIRA_LLM_NUM_CTX=2048
 ```
 
 These are server-only variables. The browser calls KEIRA’s `/api/trpc`
 backend; only the backend calls Ollama. `10.9.0.1` must be reachable from the
 production host over WireGuard, and must not be placed in browser code.
 
-Leave `LOCAL_LLM_BASE_URL` and `LOCAL_LLM_MODEL` empty for deterministic offline mode. No external AI provider is required.
+KEIRA_LLM_* takes priority. For existing deployments, the corresponding
+`LOCAL_LLM_*` names remain accepted as deprecated fallbacks, but new
+deployments should use only KEIRA_LLM_* names. Leave
+`KEIRA_LLM_ENDPOINT` and `KEIRA_LLM_MODEL` empty for deterministic offline
+mode. No external AI provider is required. At startup, KEIRA logs the names of
+loaded, legacy-fallback, defaulted, and missing model variables without
+printing their values.
 
 ## Local Development
 
@@ -86,13 +97,14 @@ pnpm build
 
 The dedicated repository is [`tychomorr-ui/sovereign-truth-engine-app`](https://github.com/tychomorr-ui/sovereign-truth-engine-app). The Ubuntu/Nginx sequence, required environment variables, PM2 process configuration, reverse proxy, and TLS setup are documented in [LIGHTSAIL_DEPLOYMENT_GUIDE.md](./LIGHTSAIL_DEPLOYMENT_GUIDE.md). The source and endpoint audit is documented in [SECURITY_AUDIT.md](./SECURITY_AUDIT.md).
 
-Set either the canonical `LOCAL_LLM_BASE_URL`/`LOCAL_LLM_MODEL` pair or the
-production aliases `KEIRA_LLM_ENDPOINT`/`KEIRA_LLM_MODEL` to enable a local
-model. `KEIRA_LLM_FALLBACK_MODEL` is optional; Fast Mode selects it directly,
-and the streaming router uses it after three failed primary attempts.
-`LOCAL_LLM_NUM_CTX` defaults to `2048` to bound Ollama CPU/memory use. Leave
-both endpoint/model pairs empty to use deterministic mode. `LOCAL_LLM_API_KEY`
-is optional and is sent only to the configured local endpoint.
+Set `KEIRA_LLM_ENDPOINT` and `KEIRA_LLM_MODEL` to enable a local model.
+`KEIRA_LLM_FALLBACK_MODEL` is optional; Fast Mode selects it directly, and the
+streaming router uses it after three failed primary attempts.
+`KEIRA_LLM_NUM_CTX` defaults to `2048` to bound Ollama CPU/memory use. Leave
+the canonical endpoint/model variables empty to use deterministic mode.
+`KEIRA_LLM_API_KEY` is optional and is sent only to the configured local
+endpoint. Existing `LOCAL_LLM_*` values are used only when the matching
+`KEIRA_LLM_*` value is absent.
 
 Trajectory signing does not consume `KEIRA_PRIVATE_KEY` directly. Production
 signing uses KEIRA’s encrypted, database-persisted Ed25519 identity key and

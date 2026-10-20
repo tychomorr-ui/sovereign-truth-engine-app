@@ -64,6 +64,24 @@ Environment variables and secrets (e.g., API keys, database credentials) are sec
 
 -   **Management**: Update secrets via **Settings → Secrets** in the Management UI or by using the `webdev_request_secrets` tool during development.
 
+### Local model configuration
+
+Use the canonical server-only variables below when connecting KEIRA to an
+OpenAI-compatible Ollama or llama.cpp endpoint:
+
+```env
+KEIRA_LLM_RUNTIME=ollama
+KEIRA_LLM_ENDPOINT=http://10.9.0.1:11434/v1
+KEIRA_LLM_MODEL=llama3.2:3b
+KEIRA_LLM_FALLBACK_MODEL=llama3.2:1b
+KEIRA_LLM_NUM_CTX=2048
+```
+
+`KEIRA_LLM_*` takes priority. Existing matching `LOCAL_LLM_*` names remain
+available only as deprecated compatibility fallbacks. The browser never calls
+the model endpoint directly. On startup, the server logs which model variable
+names were loaded, defaulted, or missing without logging their values.
+
 ---
 
 **Author**: Manus AI

@@ -13,6 +13,7 @@ import { betaOpenStatusHandler } from "../beta-open-status";
 import { registerStorageProxy } from "./storageProxy";
 import { signTrajectoryHandler } from "../trajectory-attestation";
 import { streamPortalMessage } from "../portal-chat-stream";
+import { getLocalModelEnvironmentStatus } from "./env";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,6 +35,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  const localModelEnv = getLocalModelEnvironmentStatus();
+  console.log(`[KEIRA] Local model environment: loaded=${localModelEnv.loaded.join(",") || "none"}; legacyFallbacks=${localModelEnv.legacyFallbacks.join(",") || "none"}; defaults=${localModelEnv.defaults.join(",") || "none"}; missing=${localModelEnv.missing.join(",") || "none"}`);
   const app = express();
   const server = createServer(app);
   app.disable("x-powered-by");

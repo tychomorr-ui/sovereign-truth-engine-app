@@ -59,12 +59,14 @@ KEIRA_IDENTITY_ROOT_SECRET=replace-with-a-random-32-plus-character-secret
 KEIRA_LLM_RUNTIME=ollama
 KEIRA_LLM_ENDPOINT=http://10.9.0.1:11434/v1
 KEIRA_LLM_MODEL=llama3.2:3b
-LOCAL_LLM_API_KEY=
-LOCAL_LLM_MAX_TOKENS=4096
-LOCAL_LLM_TEMPERATURE=0
-LOCAL_LLM_TOP_P=1
-LOCAL_LLM_SEED=42
-LOCAL_LLM_TIMEOUT_MS=60000
+KEIRA_LLM_FALLBACK_MODEL=llama3.2:1b
+KEIRA_LLM_API_KEY=
+KEIRA_LLM_MAX_TOKENS=4096
+KEIRA_LLM_NUM_CTX=2048
+KEIRA_LLM_TEMPERATURE=0
+KEIRA_LLM_TOP_P=1
+KEIRA_LLM_SEED=42
+KEIRA_LLM_TIMEOUT_MS=60000
 
 # Optional object storage for transcript exports.
 PORTAL_S3_BUCKET=
@@ -74,7 +76,14 @@ AWS_SECRET_ACCESS_KEY=
 AWS_SESSION_TOKEN=
 ```
 
-`LOCAL_LLM_BASE_URL` and `LOCAL_LLM_MODEL` remain supported as canonical internal aliases. `KEIRA_PRIVATE_KEY` is not consumed by the current production signer: trajectory reports are signed with KEIRA's encrypted identity key stored in the database, protected by `KEIRA_IDENTITY_ROOT_SECRET`. Do not put a PEM private key in Git, browser code, or exported reports.
+`KEIRA_LLM_*` is canonical. Existing `LOCAL_LLM_*` names remain supported only
+as deprecated fallbacks when the corresponding KEIRA variable is absent.
+Startup logs report which model variable names were loaded, defaulted, or
+missing without printing values. `KEIRA_PRIVATE_KEY` is not consumed by the
+current production signer: trajectory reports are signed with KEIRA's
+encrypted identity key stored in the database, protected by
+`KEIRA_IDENTITY_ROOT_SECRET`. Do not put a PEM private key in Git, browser
+code, or exported reports.
 
 Protect the local file and never commit it:
 ```bash

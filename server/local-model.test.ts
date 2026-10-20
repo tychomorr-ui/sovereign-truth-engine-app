@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ENV } from "./_core/env";
 import { GOVERNED_JSON_GBNF, LocalModelRegistry, OpenAiCompatibleLocalProvider } from "./local-model";
 
 const originalFetch = globalThis.fetch;
@@ -25,8 +26,8 @@ describe("Stage 3 local model provider", () => {
       const body = JSON.parse(String(init?.body)) as { model: string; temperature: number; top_p: number; seed: number };
       expect(body.model).toBe("test-model");
       expect(body.temperature).toBe(0);
-      expect(body.top_p).toBe(1);
-      expect(body.seed).toBe(42);
+      expect(body.top_p).toBe(ENV.localLlmTopP);
+      expect(body.seed).toBe(ENV.localLlmSeed);
       return new Response(JSON.stringify({ choices: [{ message: { content: "generated local answer" }, finish_reason: "stop" }], usage: { prompt_tokens: 4, completion_tokens: 3, total_tokens: 7 } }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
     const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:8080/v1", "test-model", "vllm");

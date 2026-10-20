@@ -63,7 +63,7 @@ export function deterministicResponse(request: LocalGatewayRequest): LocalGatewa
   } else if (/\b(hello|hi|hey)\b/.test(normalized) && question.length < 80) {
     content = `Hello. I am KEIRA's local deterministic runtime. I can organize, clarify, compare, and transform the information you provide. What would you like to examine?`;
   } else if (/\b(capabilit|can you|what are you)\b/.test(normalized)) {
-    content = "The current runtime can preserve conversation history, apply the operator-owned context ledger, follow saved response controls, and produce bounded deterministic replies. A self-hosted local model can be enabled with LOCAL_LLM_BASE_URL and LOCAL_LLM_MODEL. Live web research, hidden knowledge, and unsupported claims are not active by default.";
+    content = "The current runtime can preserve conversation history, apply the operator-owned context ledger, follow saved response controls, and produce bounded deterministic replies. A self-hosted local model can be enabled with KEIRA_LLM_ENDPOINT and KEIRA_LLM_MODEL. Live web research, hidden knowledge, and unsupported claims are not active by default.";
   } else {
     content = [
       "Deterministic runtime response.",
