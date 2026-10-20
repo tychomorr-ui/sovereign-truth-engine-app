@@ -59,7 +59,7 @@ Observed server environment mappings include:
 - `KEIRA_IDENTITY_ROOT_SECRET` — server-only encryption root for KEIRA's private identity key.
 - `BETA_OPEN_MODE` — temporary beta-open switch.
 - `KEIRA_LLM_ENDPOINT`, `KEIRA_LLM_RUNTIME`, `KEIRA_LLM_MODEL`, `KEIRA_LLM_API_KEY`, `KEIRA_LLM_FALLBACK_MODEL`, and `KEIRA_LLM_*` generation limits — canonical local inference configuration; the requested Singapore values target Ollama over WireGuard.
-- Matching `LOCAL_LLM_*` names — deprecated compatibility fallbacks used only when the corresponding KEIRA variable is absent.
+- `KEIRA_LLM_*` names are the sole supported local-model configuration contract.
 - `KEIRA_PRIVATE_KEY` — not consumed by the current signer; production signing uses the encrypted database-persisted identity key protected by `KEIRA_IDENTITY_ROOT_SECRET`.
 - `PORTAL_S3_BUCKET`, `PORTAL_S3_REGION`, and AWS credentials — optional storage path.
 

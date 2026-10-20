@@ -40,9 +40,9 @@ KEIRA calls `/chat/completions` and `/models` through this base URL.
 For a llama.cpp server, configure the same endpoint shape with:
 
 ```text
-LOCAL_LLM_BASE_URL=https://your-authenticated-llama-host.example/v1
-LOCAL_LLM_RUNTIME=llama.cpp
-LOCAL_LLM_MODEL=your-local-model
+KEIRA_LLM_ENDPOINT=https://your-authenticated-llama-host.example/v1
+KEIRA_LLM_RUNTIME=llama.cpp
+KEIRA_LLM_MODEL=your-local-model
 ```
 
 When KEIRA uses the governed structured-generation path, the adapter sends:
@@ -57,18 +57,18 @@ This constrains output **syntax and shape** at the llama.cpp runtime. It does no
 Add these as server-side project secrets/environment variables. Do not put them in browser code or commit them to Git:
 
 ```text
-LOCAL_LLM_BASE_URL=https://your-authenticated-ollama-host.example/v1
-LOCAL_LLM_RUNTIME=ollama
-LOCAL_LLM_MODEL=qwen2.5:3b
-LOCAL_LLM_API_KEY=your-proxy-token-if-required
-LOCAL_LLM_MAX_TOKENS=4096
-LOCAL_LLM_TEMPERATURE=0
-LOCAL_LLM_TOP_P=1
-LOCAL_LLM_SEED=42
-LOCAL_LLM_TIMEOUT_MS=60000
+KEIRA_LLM_ENDPOINT=https://your-authenticated-ollama-host.example/v1
+KEIRA_LLM_RUNTIME=ollama
+KEIRA_LLM_MODEL=qwen2.5:3b
+KEIRA_LLM_API_KEY=your-proxy-token-if-required
+KEIRA_LLM_MAX_TOKENS=4096
+KEIRA_LLM_TEMPERATURE=0
+KEIRA_LLM_TOP_P=1
+KEIRA_LLM_SEED=42
+KEIRA_LLM_TIMEOUT_MS=60000
 ```
 
-`LOCAL_LLM_BASE_URL` is intentionally blank by default on hosted deployments. This prevents a false claim that the hosted container has an Ollama daemon.
+`KEIRA_LLM_ENDPOINT` is intentionally blank by default on hosted deployments. This prevents a false claim that the hosted container has an Ollama daemon.
 
 ## What KEIRA guarantees
 

@@ -36,7 +36,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const localModelEnv = getLocalModelEnvironmentStatus();
-  console.log(`[KEIRA] Local model environment: loaded=${localModelEnv.loaded.join(",") || "none"}; legacyFallbacks=${localModelEnv.legacyFallbacks.join(",") || "none"}; defaults=${localModelEnv.defaults.join(",") || "none"}; missing=${localModelEnv.missing.join(",") || "none"}`);
+  console.log(`[KEIRA] Local model environment: loaded=${localModelEnv.loaded.join(",") || "none"}; defaults=${localModelEnv.defaults.join(",") || "none"}; missing=${localModelEnv.missing.join(",") || "none"}`);
   const app = express();
   const server = createServer(app);
   app.disable("x-powered-by");

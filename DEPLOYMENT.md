@@ -77,10 +77,10 @@ KEIRA_LLM_FALLBACK_MODEL=llama3.2:1b
 KEIRA_LLM_NUM_CTX=2048
 ```
 
-`KEIRA_LLM_*` takes priority. Existing matching `LOCAL_LLM_*` names remain
-available only as deprecated compatibility fallbacks. The browser never calls
-the model endpoint directly. On startup, the server logs which model variable
-names were loaded, defaulted, or missing without logging their values.
+`KEIRA_LLM_*` names are the only supported local-model variables. The browser
+never calls the model endpoint directly. On startup, the server logs which
+model variable names were loaded, defaulted, or missing without logging their
+values.
 
 ---
 

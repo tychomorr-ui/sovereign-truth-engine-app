@@ -68,13 +68,10 @@ These are server-only variables. The browser calls KEIRA’s `/api/trpc`
 backend; only the backend calls Ollama. `10.9.0.1` must be reachable from the
 production host over WireGuard, and must not be placed in browser code.
 
-KEIRA_LLM_* takes priority. For existing deployments, the corresponding
-`LOCAL_LLM_*` names remain accepted as deprecated fallbacks, but new
-deployments should use only KEIRA_LLM_* names. Leave
+`KEIRA_LLM_*` names are the only supported local-model variables. Leave
 `KEIRA_LLM_ENDPOINT` and `KEIRA_LLM_MODEL` empty for deterministic offline
 mode. No external AI provider is required. At startup, KEIRA logs the names of
-loaded, legacy-fallback, defaulted, and missing model variables without
-printing their values.
+loaded, defaulted, and missing model variables without printing their values.
 
 ## Local Development
 
@@ -103,8 +100,7 @@ streaming router uses it after three failed primary attempts.
 `KEIRA_LLM_NUM_CTX` defaults to `2048` to bound Ollama CPU/memory use. Leave
 the canonical endpoint/model variables empty to use deterministic mode.
 `KEIRA_LLM_API_KEY` is optional and is sent only to the configured local
-endpoint. Existing `LOCAL_LLM_*` values are used only when the matching
-`KEIRA_LLM_*` value is absent.
+endpoint. The runtime reads the configured `KEIRA_LLM_*` values directly.
 
 Trajectory signing does not consume `KEIRA_PRIVATE_KEY` directly. Production
 signing uses KEIRA’s encrypted, database-persisted Ed25519 identity key and

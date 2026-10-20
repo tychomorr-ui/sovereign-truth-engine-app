@@ -73,10 +73,10 @@ Example deterministic receipt:
 `server/local-gateway.ts` supports the common OpenAI-compatible `/v1/chat/completions` and `/v1/models` shapes. This permits Ollama, llama.cpp server, vLLM, or another local-compatible runtime without coupling KEIRA to one runtime. The optional variables are:
 
 ```bash
-LOCAL_LLM_RUNTIME=ollama
-LOCAL_LLM_BASE_URL=http://127.0.0.1:11434/v1
-LOCAL_LLM_MODEL=your-installed-model
-LOCAL_LLM_API_KEY=
+KEIRA_LLM_RUNTIME=ollama
+KEIRA_LLM_ENDPOINT=http://127.0.0.1:11434/v1
+KEIRA_LLM_MODEL=your-installed-model
+KEIRA_LLM_API_KEY=
 ```
 
 A configured local model that fails is bounded by a deterministic fallback. The receipt records that fallback and does not mark the response as a successful local-model response.

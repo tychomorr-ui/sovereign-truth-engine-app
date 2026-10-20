@@ -35,10 +35,10 @@ The local runtime probe contacts only the explicitly configured local model endp
 | `DATABASE_URL` | MySQL-compatible application database | Yes |
 | `JWT_SECRET` | Signs first-party session cookies | Yes |
 | `PORTAL_OWNER_ACCESS_TOKEN` | Gates owner bootstrap | Yes |
-| `LOCAL_LLM_RUNTIME` | Informational runtime label such as `ollama`, `llama.cpp`, or `vllm` | No |
-| `LOCAL_LLM_BASE_URL` | Optional local `/v1` inference endpoint | Operationally sensitive |
-| `LOCAL_LLM_MODEL` | Optional installed local model name | No |
-| `LOCAL_LLM_API_KEY` | Optional credential for the local endpoint | Yes |
+| `KEIRA_LLM_RUNTIME` | Informational runtime label such as `ollama`, `llama.cpp`, or `vllm` | No |
+| `KEIRA_LLM_ENDPOINT` | Optional local `/v1` inference endpoint | Operationally sensitive |
+| `KEIRA_LLM_MODEL` | Optional installed local model name | No |
+| `KEIRA_LLM_API_KEY` | Optional credential for the local endpoint | Yes |
 | `PORTAL_S3_BUCKET` / `PORTAL_S3_REGION` | Optional transcript export storage | Bucket name is operationally sensitive |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Optional S3 storage authentication only | Yes |
 

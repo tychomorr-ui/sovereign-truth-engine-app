@@ -76,8 +76,7 @@ AWS_SECRET_ACCESS_KEY=
 AWS_SESSION_TOKEN=
 ```
 
-`KEIRA_LLM_*` is canonical. Existing `LOCAL_LLM_*` names remain supported only
-as deprecated fallbacks when the corresponding KEIRA variable is absent.
+`KEIRA_LLM_*` is the sole supported local-model configuration contract.
 Startup logs report which model variable names were loaded, defaulted, or
 missing without printing values. `KEIRA_PRIVATE_KEY` is not consumed by the
 current production signer: trajectory reports are signed with KEIRA's
