@@ -176,13 +176,11 @@ export default function PortalChat() {
   const utils = trpc.useUtils();
   const registerMutation = trpc.auth.register.useMutation();
   const loginMutation = trpc.auth.login.useMutation();
-  const ownerBootstrapMutation = trpc.auth.ownerBootstrap.useMutation();
   const profileMutation = trpc.auth.updateProfile.useMutation();
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
-  const [ownerToken, setOwnerToken] = useState("");
-  const [authMode, setAuthMode] = useState<"owner" | "login" | "register">("owner");
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [authError, setAuthError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -369,18 +367,6 @@ export default function PortalChat() {
     }
   }, [showMistPanel, boomerangResult, boomerangHistoryQuery.data]);
 
-  const establishOwnerSession = async () => {
-    setAuthError(null);
-    try {
-      await ownerBootstrapMutation.mutateAsync({ token: ownerToken.trim() });
-      await utils.auth.me.refetch();
-      await utils.portal.chat.getConversations.invalidate();
-      setOwnerToken("");
-    } catch (error: unknown) {
-      setAuthError(error instanceof Error ? error.message : "Owner entry failed. Check the private key and try again.");
-    }
-  };
-
   const signInWithPassword = async () => {
     setAuthError(null);
     try {
@@ -405,7 +391,7 @@ export default function PortalChat() {
     }
   };
 
-  const authSubmitting = registerMutation.isPending || loginMutation.isPending || ownerBootstrapMutation.isPending;
+  const authSubmitting = registerMutation.isPending || loginMutation.isPending;
 
   const handleSaveProfile = async () => {
     setProfileSaving(true);
@@ -760,55 +746,7 @@ export default function PortalChat() {
           <div className="mt-8 border border-[#1a2240] bg-[#0d1224] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[#d7c7ff]">
             Sovereign account access
           </div>
-          {authMode === "owner" ? (
-            <div className="mt-4 space-y-3">
-              <p className="text-sm leading-6 text-[#a6aec0]">
-                Enter the owner access key only if this installation has one provisioned.
-              </p>
-              <Input
-                aria-label="Private owner access key"
-                autoComplete="off"
-                type="password"
-                placeholder="Private owner access key"
-                value={ownerToken}
-                onChange={(event) => setOwnerToken(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void establishOwnerSession();
-                }}
-                className="h-12 rounded-none border-[#1a2240] bg-[#0d1224] text-[#f4f4f5] placeholder:text-[#737b8f]"
-              />
-              {authError && <p className="text-sm leading-6 text-[#ff9aa8]" role="alert">{authError}</p>}
-              <Button
-                type="button"
-                disabled={authSubmitting || !ownerToken.trim()}
-                onClick={() => void establishOwnerSession()}
-                className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
-              >
-                {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                Enter with owner key
-              </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode("login");
-                  setAuthError(null);
-                }}
-                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
-              >
-                Use email and password instead
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode("register");
-                  setAuthError(null);
-                }}
-                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
-              >
-                Create a new account
-              </button>
-            </div>
-          ) : authMode === "login" ? (
+          {authMode === "login" ? (
             <form
               className="mt-4 space-y-3"
               onSubmit={(event) => {
@@ -846,22 +784,12 @@ export default function PortalChat() {
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("owner");
-                  setAuthError(null);
-                }}
-                className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
-              >
-                Back to owner entry
-              </button>
-              <button
-                type="button"
-                onClick={() => {
                   setAuthMode("register");
                   setAuthError(null);
                 }}
                 className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
               >
-                Create or reset an account
+                Create a new account instead
               </button>
             </form>
           ) : (
@@ -907,17 +835,17 @@ export default function PortalChat() {
                 className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
               >
                 {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                Create or reset account
+                Create account
               </Button>
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("owner");
+                  setAuthMode("login");
                   setAuthError(null);
                 }}
                 className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
               >
-                Back to access options
+                Sign in instead
               </button>
             </form>
           )}

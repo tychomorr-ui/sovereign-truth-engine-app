@@ -17,15 +17,12 @@ function createContext(): { ctx: TrpcContext; cookies: Array<{ name: string; val
 }
 
 describe("auth.ownerBootstrap", () => {
-  it("accepts the configured private owner token and establishes a session", async () => {
+  it("fails closed until a new account is explicitly created", async () => {
     const token = process.env.PORTAL_OWNER_ACCESS_TOKEN;
     expect(token).toBeTruthy();
 
     const { ctx, cookies } = createContext();
-    const user = await appRouter.createCaller(ctx).auth.ownerBootstrap({ token: token! });
-
-    expect(user.role).toBe("admin");
-    expect(cookies).toHaveLength(1);
-    expect(cookies[0]?.value).toBeTruthy();
+    await expect(appRouter.createCaller(ctx).auth.ownerBootstrap({ token: token! })).rejects.toThrow("Owner account is not provisioned.");
+    expect(cookies).toHaveLength(0);
   });
 });

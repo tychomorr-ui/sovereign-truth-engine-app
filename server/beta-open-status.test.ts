@@ -21,14 +21,14 @@ describe("temporary KEIRA beta-open mode", () => {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   });
 
-  it("reports beta-open mode without exposing any secret or owner privilege", async () => {
+  it("reports normal authentication without exposing any secret or owner privilege", async () => {
     const response = await fetch(`${baseUrl}/api/beta-status`);
     const body = await response.json() as Record<string, unknown>;
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      betaOpen: true,
-      authentication: "temporary-beta-session",
+      betaOpen: false,
+      authentication: "normal-authentication",
       ownerPrivileges: false,
     });
     expect(JSON.stringify(body)).not.toContain("BETA_OPEN_MODE");

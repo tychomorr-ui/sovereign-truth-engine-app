@@ -16,8 +16,6 @@ import type { MistResult } from "../client/src/lib/mist/types";
 import { listBoomerangTrajectories, persistBoomerangTrajectory, readBoomerangTrajectory } from "./boomerang-persistence";
 import type { BoomerangSwarmResult } from "../client/src/lib/boomerang/types";
 
-const FRESH_OWNER_EMAIL = "tyler@nexinus.net";
-
 /**
  * Sovereign Portal API surface.
  * Legacy reflection, knowledge-graph, Stripe, and platform-system endpoints are
@@ -36,17 +34,6 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const email = input.email.trim().toLowerCase();
         const existing = await db.getUserByEmail(email);
-        if (email === FRESH_OWNER_EMAIL && existing?.loginMethod === "auth-reset" && !existing.passwordHash) {
-          const claimed = await db.setSovereignCredentials({
-            userId: existing.id,
-            email,
-            name: input.name,
-            passwordHash: await hashPassword(input.password),
-          });
-          if (!claimed) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Account claim failed." });
-          setSessionCookie(ctx.req, ctx.res, await createSessionToken({ userId: claimed.id, name: claimed.name || input.name }));
-          return claimed;
-        }
         if (existing) {
           throw new TRPCError({ code: "CONFLICT", message: "An account already exists for that email." });
         }
@@ -128,7 +115,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid owner access token." });
         }
 
-        const owner = await db.getUserByEmail(FRESH_OWNER_EMAIL);
+        const owner = await db.getUserByEmail("tyler@nexinus.net");
         if (!owner) throw new TRPCError({ code: "NOT_FOUND", message: "Owner account is not provisioned." });
 
         const promoted = await db.promoteUserToOwner(owner.id);
