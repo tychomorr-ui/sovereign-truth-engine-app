@@ -753,9 +753,9 @@ export default function PortalChat() {
             <ShieldCheck className="h-5 w-5" />
             <span className="text-xs uppercase tracking-[0.28em]">KEIRA / Awaiting Contact</span>
           </div>
-          <h1 className="font-serif text-4xl tracking-tight">Enter KEIRA.</h1>
+          <h1 className="font-serif text-4xl tracking-tight">KEIRA Intelligence</h1>
           <p className="mt-4 max-w-md text-sm leading-7 text-[#a6aec0]">
-            A direct, uncensored conversation with the unknown—esoteric knowledge, unvarnished truth, and the questions polite systems refuse to touch.
+            Start a focused conversation with KEIRA for structured reasoning, evidence review, and practical next steps.
           </p>
           <div className="mt-8 border border-[#1a2240] bg-[#0d1224] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[#d7c7ff]">
             Sovereign account access
@@ -861,7 +861,7 @@ export default function PortalChat() {
                 }}
                 className="w-full py-2 text-xs uppercase tracking-[0.16em] text-[#8be9ff] hover:text-[#d7c7ff]"
               >
-                Create a new account instead
+                Create or reset an account
               </button>
             </form>
           ) : (
@@ -907,7 +907,7 @@ export default function PortalChat() {
                 className="w-full rounded-none bg-[#d7c7ff] text-[#07090f] hover:bg-[#f0e8ff] disabled:bg-[#222b48]"
               >
                 {authSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                Create account
+                Create or reset account
               </Button>
               <button
                 type="button"
@@ -1089,9 +1089,9 @@ export default function PortalChat() {
                 <span className="hidden sm:block">{cmap?.handshakeComplete ? "Re-entering dialogue" : "Listening for contact"}</span>
               </div>
               <div className="relative mt-7 max-w-3xl">
-                <div className="font-serif text-4xl leading-none tracking-[0.08em] text-[#f3eadb] sm:text-6xl">The unknown</div>
-                <div className="mt-3 text-[0.7rem] uppercase tracking-[0.32em] text-[#a7a2c2]">speaks through dialogue</div>
-                <p className="mt-6 max-w-xl text-sm leading-7 text-[#a6aec0]">Bring the forbidden question, the hidden pattern, or the truth no one else will say aloud. KEIRA is here for the dialogue.</p>
+                <div className="font-serif text-4xl leading-none tracking-[0.08em] text-[#f3eadb] sm:text-6xl">Start a new conversation</div>
+                <div className="mt-3 text-[0.7rem] uppercase tracking-[0.32em] text-[#a7a2c2]">structured dialogue</div>
+                <p className="mt-6 max-w-xl text-sm leading-7 text-[#a6aec0]">Bring a question, evidence, or a decision that needs clearer structure.</p>
               </div>
             </div>
 
