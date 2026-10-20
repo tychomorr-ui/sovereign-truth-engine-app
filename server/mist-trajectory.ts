@@ -227,6 +227,15 @@ export async function readMistTrajectory(userId: number, trajectoryId: string): 
   return toPersisted(rows[0], artifacts);
 }
 
+export async function readMistTrajectoryByRoot(userId: number, merkleRoot: string): Promise<PersistedMistTrajectory | null> {
+  const db = await getDb();
+  if (!db) throw new Error("MIST trajectory persistence is unavailable: database is not configured.");
+  const rows = await db.select().from(keiraMistTrajectories).where(and(eq(keiraMistTrajectories.merkleRoot, merkleRoot), eq(keiraMistTrajectories.userId, userId))).limit(1);
+  if (!rows[0]) return null;
+  const artifacts = await db.select().from(keiraMistTrajectoryArtifacts).where(eq(keiraMistTrajectoryArtifacts.trajectoryId, rows[0].trajectoryId)).orderBy(keiraMistTrajectoryArtifacts.leafIndex);
+  return toPersisted(rows[0], artifacts);
+}
+
 export async function listMistTrajectories(userId: number, limit = 50): Promise<PersistedMistTrajectory[]> {
   const db = await getDb();
   if (!db) throw new Error("MIST trajectory persistence is unavailable: database is not configured.");

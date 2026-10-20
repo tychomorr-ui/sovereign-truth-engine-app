@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import type { LocalChatMessage } from "./local-gateway";
+import { KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
 
 export type ModelEndpointClass = "LOCAL_LOOPBACK" | "LOCAL_NETWORK" | "MESH_AUTHORIZED" | "EXTERNAL";
 export type ContextBoundary = "LOCAL_ONLY" | "MESH_AUTHORIZED" | "EXTERNAL_AUTHORIZED" | "PROHIBITED_FOR_EXTERNAL_PROCESSING";
@@ -152,7 +153,7 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         headers: { "Content-Type": "application/json", ...(ENV.localLlmApiKey ? { Authorization: `Bearer ${ENV.localLlmApiKey}` } : {}) },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: "system", content: request.system }, ...request.messages],
+          messages: [{ role: "system", content: KEIRA_SYSTEM_PROMPT }, { role: "system", content: request.system }, ...request.messages],
           max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
           options: { num_ctx: ENV.localLlmNumCtx },
           temperature: request.temperature ?? ENV.localLlmTemperature,
@@ -195,7 +196,7 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         headers: { "Content-Type": "application/json", ...(ENV.localLlmApiKey ? { Authorization: `Bearer ${ENV.localLlmApiKey}` } : {}) },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: "system", content: request.system }, ...request.messages],
+          messages: [{ role: "system", content: KEIRA_SYSTEM_PROMPT }, { role: "system", content: request.system }, ...request.messages],
           max_tokens: request.maxTokens ?? ENV.localLlmMaxTokens,
           options: { num_ctx: ENV.localLlmNumCtx },
           temperature: request.temperature ?? ENV.localLlmTemperature,

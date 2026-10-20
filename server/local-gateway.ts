@@ -1,7 +1,8 @@
 import { ENV } from "./_core/env";
 import { getConfiguredLocalModelProvider, type ContextBoundary } from "./local-model";
+import { KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
 
-export type LocalRole = "user" | "assistant";
+export type LocalRole = "system" | "user" | "assistant";
 
 export type LocalChatMessage = {
   role: LocalRole;
@@ -91,6 +92,7 @@ async function invokeOpenAiCompatible(request: LocalGatewayRequest): Promise<Loc
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ENV.localLlmTimeoutMs);
   const messages = [
+    { role: "system", content: KEIRA_SYSTEM_PROMPT },
     { role: "system", content: request.system },
     ...request.messages,
   ];

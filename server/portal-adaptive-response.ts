@@ -19,6 +19,7 @@ import {
 import { assembleMinimumContext, createMemoryObject, type ContextAssembly } from "./memory-fabric";
 import { runBoundedReflection, type BoundedReflectionResult } from "./reflection-engine";
 import { ENV } from "./_core/env";
+import { formatMistEvidence, type MistEvidenceArtifact } from "./keira-prompt";
 
 export interface AdaptiveResponse {
   strategy: DialogueStrategy;
@@ -55,7 +56,7 @@ export async function generateAdaptiveResponse(
   recentMessages: Array<{ role: 'user' | 'portal'; content: string }>,
   responseVariation?: number,
   onToken?: (token: string) => void,
-  modelOptions?: { model?: string; fallbackModel?: string },
+  modelOptions?: { model?: string; fallbackModel?: string; mistEvidence?: MistEvidenceArtifact[] },
 ): Promise<AdaptiveResponse> {
   try {
     const contextLedger = ((context as any).contextLedger ?? []) as Array<{ label: string; content: string; kind: string }>;
@@ -85,7 +86,7 @@ export async function generateAdaptiveResponse(
     const systemPrompt = buildSystemPrompt(context, strategy, memoryAssembly);
 
     // Build message history with context injection
-    const messages = buildMessageHistory(userMessage, recentMessages, context, strategy);
+    const messages = buildMessageHistory(userMessage, recentMessages, context, strategy, modelOptions?.mistEvidence ?? []);
 
     const normalizedVariation = Math.max(0, Math.min(1, Number.isFinite(responseVariation) ? Number(responseVariation) / 100 : 0.1));
     const localResult = onToken
@@ -229,9 +230,10 @@ function buildMessageHistory(
   userMessage: string,
   recentMessages: Array<{ role: 'user' | 'portal'; content: string }>,
   context: UserContext,
-  strategy: StrategySelection
-): Array<{ role: 'user' | 'assistant'; content: string }> {
-  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  strategy: StrategySelection,
+  mistEvidence: MistEvidenceArtifact[],
+): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
   // Include recent messages for conversation context
   recentMessages.forEach(msg => {
@@ -240,6 +242,9 @@ function buildMessageHistory(
       content: msg.content,
     });
   });
+
+  // Evidence is a separate system message immediately before the active user turn.
+  messages.push({ role: 'system', content: formatMistEvidence(mistEvidence) });
 
   // Add current user message
   messages.push({

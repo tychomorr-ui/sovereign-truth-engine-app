@@ -13,6 +13,8 @@ import { persistReceipt } from "./keira-durable-memory";
 import { createReceipt } from "./sovereign-bus";
 import { hashResponseRequest, readCachedResponse, writeCachedResponse } from "./response-cache";
 import { ENV } from "./_core/env";
+import { readMistTrajectoryByRoot } from "./mist-trajectory";
+import type { MistEvidenceArtifact } from "./keira-prompt";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -58,6 +60,20 @@ export async function streamPortalMessage(
     .slice(-getCarryoverMessageLimit(carryoverPolicy))
     .map((msg) => ({ role: msg.role as "user" | "portal", content: msg.content }));
 
+  let mistEvidence: MistEvidenceArtifact[] = [];
+  if (trajectoryRootCid && /^[a-f0-9]{64}$/i.test(trajectoryRootCid)) {
+    const trajectory = await readMistTrajectoryByRoot(userId, trajectoryRootCid);
+    mistEvidence = trajectory?.merkle.leaves.flatMap((leaf) => {
+      try {
+        const payload = JSON.parse(leaf.payloadJson) as { artifact?: { content?: unknown } };
+        const snippet = typeof payload.artifact?.content === "string" ? payload.artifact.content : "";
+        return snippet ? [{ cid: leaf.artifactCid, snippet }] : [];
+      } catch {
+        return [];
+      }
+    }) ?? [];
+  }
+
   const selectedModel = userRecord[0].fastMode === 1 && ENV.localLlmFallbackModel
     ? ENV.localLlmFallbackModel
     : ENV.localLlmModel;
@@ -87,7 +103,7 @@ export async function streamPortalMessage(
     recentMessages,
     userRecord[0].modelTemperature,
     onToken,
-    { model: selectedModel, fallbackModel: ENV.localLlmFallbackModel || undefined },
+    { model: selectedModel, fallbackModel: ENV.localLlmFallbackModel || undefined, mistEvidence },
   );
 
   await writeCachedResponse({

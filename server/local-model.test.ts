@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ENV } from "./_core/env";
 import { GOVERNED_JSON_GBNF, LocalModelRegistry, OpenAiCompatibleLocalProvider } from "./local-model";
+import { KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
 
 const originalFetch = globalThis.fetch;
 
@@ -23,11 +24,14 @@ describe("Stage 3 local model provider", () => {
   it("executes local inference as generated content, not verified truth", async () => {
     globalThis.fetch = vi.fn(async (input, init) => {
       expect(String(input)).toContain("/chat/completions");
-      const body = JSON.parse(String(init?.body)) as { model: string; temperature: number; top_p: number; seed: number };
+      const body = JSON.parse(String(init?.body)) as { model: string; temperature: number; top_p: number; seed: number; messages: Array<{ role: string; content: string }> };
       expect(body.model).toBe("test-model");
       expect(body.temperature).toBe(0);
       expect(body.top_p).toBe(ENV.localLlmTopP);
       expect(body.seed).toBe(ENV.localLlmSeed);
+      expect(body.messages[0]).toEqual({ role: "system", content: KEIRA_SYSTEM_PROMPT });
+      expect(body.messages[1]).toEqual({ role: "system", content: "system" });
+      expect(body.messages.at(-1)).toEqual({ role: "user", content: "hello" });
       return new Response(JSON.stringify({ choices: [{ message: { content: "generated local answer" }, finish_reason: "stop" }], usage: { prompt_tokens: 4, completion_tokens: 3, total_tokens: 7 } }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
     const provider = new OpenAiCompatibleLocalProvider("http://127.0.0.1:8080/v1", "test-model", "vllm");
@@ -41,8 +45,9 @@ describe("Stage 3 local model provider", () => {
 
   it("streams incremental OpenAI-compatible SSE tokens", async () => {
     globalThis.fetch = vi.fn(async (_input, init) => {
-      const body = JSON.parse(String(init?.body)) as { stream?: boolean };
+      const body = JSON.parse(String(init?.body)) as { stream?: boolean; messages: Array<{ role: string; content: string }> };
       expect(body.stream).toBe(true);
+      expect(body.messages[0]).toEqual({ role: "system", content: KEIRA_SYSTEM_PROMPT });
       const stream = new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'));

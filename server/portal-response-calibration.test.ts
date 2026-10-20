@@ -54,4 +54,22 @@ describe("KEIRA response calibration", () => {
     expect(request.system).toContain("Never invent citations");
     expect(response.metadata.responseObjective).toBe("plan");
   });
+
+  it("injects MIST evidence immediately before the active user message", async () => {
+    await generateAdaptiveResponse(
+      "What is verified?",
+      context as any,
+      informativeStrategy,
+      [],
+      undefined,
+      undefined,
+      { mistEvidence: [{ cid: "abc123", snippet: "Verified local artifact." }] },
+    );
+    const request = invokeLocalMock.mock.calls[0][0];
+    expect(request.messages.at(-2)).toMatchObject({
+      role: "system",
+      content: expect.stringContaining("[CID: abc123] Verified local artifact."),
+    });
+    expect(request.messages.at(-1)).toEqual({ role: "user", content: "What is verified?" });
+  });
 });
