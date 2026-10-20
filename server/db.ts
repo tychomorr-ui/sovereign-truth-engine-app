@@ -81,31 +81,6 @@ export async function getUserByName(name: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-/**
- * Temporary beta-open identity. It is deliberately a non-owner account with no
- * password and cannot be used once BETA_OPEN_MODE is disabled.
- */
-export async function getOrCreateBetaUser() {
-  const betaEmail = "beta@keira.local";
-  const existing = await getUserByEmail(betaEmail);
-  if (existing) return existing;
-
-  const db = await getDb();
-  if (!db) return undefined;
-  try {
-    await db.insert(users).values({
-      email: betaEmail,
-      name: "KEIRA Beta Operator",
-      loginMethod: "beta-open",
-      role: "user",
-      lastSignedIn: new Date(),
-    });
-  } catch {
-    // A concurrent request may have created the singleton beta identity.
-  }
-  return getUserByEmail(betaEmail);
-}
-
 export async function promoteUserToOwner(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
