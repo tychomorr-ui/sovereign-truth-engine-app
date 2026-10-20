@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import type { LocalChatMessage } from "./local-gateway";
-import { KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
+import { hardLockResponse, KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
 
 export type ModelEndpointClass = "LOCAL_LOOPBACK" | "LOCAL_NETWORK" | "MESH_AUTHORIZED" | "EXTERNAL";
 export type ContextBoundary = "LOCAL_ONLY" | "MESH_AUTHORIZED" | "EXTERNAL_AUTHORIZED" | "PROHIBITED_FOR_EXTERNAL_PROCESSING";
@@ -167,7 +167,8 @@ export class OpenAiCompatibleLocalProvider implements LocalModelProvider {
       const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: string }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
       const content = payload.choices?.[0]?.message?.content;
       if (typeof content !== "string" || !content.trim()) throw new Error("LOCAL_MODEL_UNAVAILABLE: malformed or empty model response.");
-      return { requestId, content: content.trim(), modelId: this.model, provider: providerName(this.runtime), endpointClass: endpointClass(this.endpoint), local: true, dataLeftLocalNode: false, resultState: "GENERATED_INFERENCE", latencyMs: Date.now() - started, stopReason: payload.choices?.[0]?.finish_reason, usage: payload.usage ? { inputTokens: payload.usage.prompt_tokens, outputTokens: payload.usage.completion_tokens, totalTokens: payload.usage.total_tokens } : undefined };
+      const question = [...request.messages].reverse().find((message) => message.role === "user")?.content ?? "";
+      return { requestId, content: hardLockResponse(question, content.trim()), modelId: this.model, provider: providerName(this.runtime), endpointClass: endpointClass(this.endpoint), local: true, dataLeftLocalNode: false, resultState: "GENERATED_INFERENCE", latencyMs: Date.now() - started, stopReason: payload.choices?.[0]?.finish_reason, usage: payload.usage ? { inputTokens: payload.usage.prompt_tokens, outputTokens: payload.usage.completion_tokens, totalTokens: payload.usage.total_tokens } : undefined };
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw new Error("LOCAL_MODEL_UNAVAILABLE: local model request timed out or was cancelled.");
       throw error;

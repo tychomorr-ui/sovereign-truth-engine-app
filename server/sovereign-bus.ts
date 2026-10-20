@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { deterministicResponse, invokeLocal, isLocalModelConfigured, type LocalChatMessage } from "./local-gateway";
 import { ENV } from "./_core/env";
 import { getConfiguredLocalModelProvider, type ContextBoundary } from "./local-model";
+import { hardLockResponse, lockedResponseForQuestion } from "./keira-prompt";
 
 export type IntelligenceMode = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external";
 export type CapabilityId = "deterministic" | "local_model" | "local_tool" | "trusted_mesh" | "external_provider";
@@ -223,12 +224,23 @@ export async function streamLocalConversation(
         try {
           const provider = getConfiguredLocalModelProvider(model);
           const chunks: string[] = [];
+          const question = [...input.messages].reverse().find((message) => message.role === "user")?.content.trim() ?? "";
+          const locked = lockedResponseForQuestion(question);
+          let emittedContent = "";
           for await (const token of provider.stream({ system: input.system, messages: input.messages, maxTokens: input.maxTokens, temperature: input.temperature, topP: input.topP, contextBoundary: input.contextBoundary })) {
             chunks.push(token);
-            onToken(token);
+            if (!locked) {
+              const bounded = hardLockResponse(question, chunks.join(""));
+              if (bounded.startsWith(emittedContent)) {
+                const delta = bounded.slice(emittedContent.length);
+                if (delta) onToken(delta);
+                emittedContent = bounded;
+              }
+            }
           }
-          const content = chunks.join("").trim();
+          const content = hardLockResponse(question, chunks.join(""));
           if (!content) throw new Error("LOCAL_MODEL_UNAVAILABLE: empty streamed response.");
+          if (locked) onToken(content);
           return { status: "ok", value: { content, modelId: model, provider: "local" }, external_fallback: false, receipt: createReceipt({ operation, intelligence_mode: "local_model", provider: "local", model, context_sources: contextSources, policy: "local model streaming allowed; external providers disabled", verification: model === primaryModel ? "local model streamed generated inference; KEIRA verification required" : "primary model failed; configured fallback model streamed generated inference", result_state: "GENERATED_INFERENCE" }) };
         } catch (error) {
           lastError = error;

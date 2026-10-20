@@ -1,6 +1,6 @@
 import { ENV } from "./_core/env";
 import { getConfiguredLocalModelProvider, type ContextBoundary } from "./local-model";
-import { KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
+import { hardLockResponse, KEIRA_SYSTEM_PROMPT } from "./keira-prompt";
 
 export type LocalRole = "system" | "user" | "assistant";
 
@@ -128,7 +128,7 @@ async function invokeOpenAiCompatible(request: LocalGatewayRequest): Promise<Loc
     }
 
     return {
-      content: content.trim(),
+      content: hardLockResponse(latestUserMessage(request.messages), content),
       modelId: ENV.localLlmModel,
       stopReason: payload.choices?.[0]?.finish_reason,
       provider: "local",
@@ -154,7 +154,7 @@ export async function invokeLocal(request: LocalGatewayRequest): Promise<LocalGa
   if (!isLocalModelConfigured()) return deterministicResponse(request);
   const response = await getConfiguredLocalModelProvider().generate(request);
   return {
-    content: response.content,
+    content: hardLockResponse(latestUserMessage(request.messages), response.content),
     modelId: response.modelId,
     stopReason: response.stopReason,
     provider: "local",
