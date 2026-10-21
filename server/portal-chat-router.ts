@@ -36,6 +36,7 @@ import { runApexCanonical } from "./apex-canonical";
 import { getDegradationMatrix, OfflineResilienceController } from "./offline-resilience";
 import { runGovernedLocalGeneration } from "./governed-local-intelligence";
 import { getKeiraPublicIdentityStatus, issueKeiraIdentityReceipt } from "./keira-identity-persistence";
+import { retrieveForChat } from "./mist-portal-integration";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 const resilienceControllers = new Map<number, OfflineResilienceController>();
@@ -96,7 +97,28 @@ export const portalChatRouter = router({
       evidence: z.array(z.object({ name: z.string().trim().min(1).max(120), value: z.unknown(), source: z.string().trim().min(1).max(255), provenance: z.enum(["KNOWN", "UNKNOWN", "INFERRED", "CONFLICTED", "UNAVAILABLE"]), authorized: z.boolean(), necessary: z.boolean() })).max(50).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      const result = await runGovernedLocalGeneration({ ...input, authority: String(ctx.user.id) });
+      let retrieval: Awaited<ReturnType<typeof retrieveForChat>> = { artifacts: [], trajectory_root_cid: "" };
+      try {
+        retrieval = await retrieveForChat(ctx.user.id, input.request);
+      } catch (error) {
+        console.warn("[MIST] governed retrieval unavailable; continuing with supplied evidence", error instanceof Error ? error.message : String(error));
+      }
+      const enrichedInput = {
+        ...input,
+        authority: String(ctx.user.id),
+        evidence: [
+          ...input.evidence,
+          ...retrieval.artifacts.map((artifact) => ({
+            name: `MIST artifact ${artifact.cid.slice(0, 8)}`,
+            value: artifact.content,
+            source: artifact.source,
+            provenance: "KNOWN" as const,
+            authorized: true,
+            necessary: true,
+          })),
+        ],
+      };
+      const result = await runGovernedLocalGeneration(enrichedInput);
       await persistReceipt(ctx.user.id, result.receipt);
       return result;
     }),
