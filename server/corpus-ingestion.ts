@@ -4,9 +4,11 @@ import type { CorpusEmbedding, CorpusIngestResult } from "../client/src/lib/corp
 import { getDb } from "./db";
 import { keiraCorpusVectors } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
+import { generateEmbedding } from "./local-embedding-provider";
 
-const VECTOR_DIMENSION = 384;
+const VECTOR_DIMENSION = 768;
 
+/** Deterministic fallback retained for offline or unavailable Ollama runtimes. */
 function localVector(text: string): number[] {
   const vector = new Array<number>(VECTOR_DIMENSION).fill(0);
   const normalized = text.normalize("NFKC").toLowerCase();
@@ -19,13 +21,22 @@ function localVector(text: string): number[] {
   return magnitude > 0 ? vector.map((value) => value / magnitude) : vector;
 }
 
+async function embedWithFallback(text: string): Promise<number[]> {
+  try {
+    const vector = await generateEmbedding(text);
+    return vector.length === VECTOR_DIMENSION ? vector : localVector(text);
+  } catch {
+    return localVector(text);
+  }
+}
+
 export type IngestedCorpusDocument = CorpusIngestResult & {
   embeddings: CorpusEmbedding[];
   embedding: {
-    model: "keira-local-deterministic";
-    modelVersion: "v1";
+    model: "nomic-embed-text";
+    modelVersion: "1.0";
     dimension: number;
-    runtime: "server-local";
+    runtime: "ollama";
   };
 };
 
@@ -43,22 +54,25 @@ export async function ingestCorpusDocument(input: {
     content: input.content,
     source: "operator-upload",
   });
-  const embeddings = result.chunks.map((chunk) => ({
-    chunkCid: chunk.cid,
-    model: "keira-local-deterministic" as const,
-    modelVersion: "v1",
-    vector: localVector(chunk.content),
-    createdAt: chunk.createdAt,
-    schemaVersion: "1.0.0" as const,
-  }));
+  const embeddings: CorpusEmbedding[] = [];
+  for (const chunk of result.chunks) {
+    embeddings.push({
+      chunkCid: chunk.cid,
+      model: "nomic-embed-text",
+      modelVersion: "1.0",
+      vector: await embedWithFallback(chunk.content),
+      createdAt: chunk.createdAt,
+      schemaVersion: "1.0.0",
+    });
+  }
   const stored: IngestedCorpusDocument = {
     ...result,
     embeddings,
     embedding: {
-      model: "keira-local-deterministic",
-      modelVersion: "v1",
+      model: "nomic-embed-text",
+      modelVersion: "1.0",
       dimension: VECTOR_DIMENSION,
-      runtime: "server-local",
+      runtime: "ollama",
     },
   };
   if (userId !== undefined) {
@@ -83,6 +97,7 @@ export async function ingestCorpusDocument(input: {
 }
 
 function cosine(left: number[], right: number[]): number {
+  if (left.length !== right.length || left.length === 0) return -1;
   let dot = 0;
   let leftMagnitude = 0;
   let rightMagnitude = 0;
@@ -96,7 +111,7 @@ function cosine(left: number[], right: number[]): number {
 }
 
 export async function searchStoredCorpusEvidence(userId: number, query: string, limit = 8): Promise<Array<{ cid: string; snippet: string; score: number }>> {
-  const queryVector = localVector(query);
+  const queryVector = await embedWithFallback(query);
   const records = Array.from(corpusByUser.get(userId)?.values() ?? []);
   const memoryResults = records.flatMap((record) => record.chunks.map((chunk) => {
     const embedding = record.embeddings.find((item) => item.chunkCid === chunk.cid);

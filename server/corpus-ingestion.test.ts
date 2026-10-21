@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./local-embedding-provider", () => ({
+  generateEmbedding: vi.fn(async (text: string) => Array.from({ length: 768 }, (_, index) => (text.length + (index % 7)) / 1000)),
+}));
+
 import { ingestCorpusDocument, searchStoredCorpusEvidence } from "./corpus-ingestion";
 import { KEIRA_OUTPUT_FILTER_RESPONSE, hardLockResponse } from "./keira-prompt";
 
@@ -12,9 +17,21 @@ describe("Portal corpus ingestion", () => {
     expect(result.document.metadata.filename).toBe("policy.md");
     expect(result.chunks.length).toBeGreaterThan(0);
     expect(result.embeddings).toHaveLength(result.chunks.length);
-    expect(result.embedding.runtime).toBe("server-local");
-    expect(result.embeddings[0].vector).toHaveLength(384);
+    expect(result.embedding.model).toBe("nomic-embed-text");
+    expect(result.embedding.modelVersion).toBe("1.0");
+    expect(result.embedding.runtime).toBe("ollama");
+    expect(result.embeddings[0].vector).toHaveLength(768);
     expect(result.embeddings[0].vector.every(Number.isFinite)).toBe(true);
+  });
+
+  it("stores 768-dimensional vectors for each ingested chunk", async () => {
+    const result = await ingestCorpusDocument({
+      filename: "dimension-check.txt",
+      mimeType: "text/plain",
+      content: "The MIST corpus uses aligned local embedding dimensions.",
+    });
+    const vectorJson = JSON.stringify(result.embeddings[0].vector);
+    expect(JSON.parse(vectorJson)).toHaveLength(768);
   });
 
   it("rejects unsupported document types", async () => {
