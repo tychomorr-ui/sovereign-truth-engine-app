@@ -36,7 +36,8 @@ import { runApexCanonical } from "./apex-canonical";
 import { getDegradationMatrix, OfflineResilienceController } from "./offline-resilience";
 import { runGovernedLocalGeneration } from "./governed-local-intelligence";
 import { getKeiraPublicIdentityStatus, issueKeiraIdentityReceipt } from "./keira-identity-persistence";
-import { retrieveForChat } from "./mist-portal-integration";
+import { retrieveForChat, toPersistableMistResult } from "./mist-portal-integration";
+import { persistMistTrajectory } from "./mist-trajectory";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 const resilienceControllers = new Map<number, OfflineResilienceController>();
@@ -97,9 +98,14 @@ export const portalChatRouter = router({
       evidence: z.array(z.object({ name: z.string().trim().min(1).max(120), value: z.unknown(), source: z.string().trim().min(1).max(255), provenance: z.enum(["KNOWN", "UNKNOWN", "INFERRED", "CONFLICTED", "UNAVAILABLE"]), authorized: z.boolean(), necessary: z.boolean() })).max(50).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      let retrieval: Awaited<ReturnType<typeof retrieveForChat>> = { artifacts: [], trajectory_root_cid: "" };
+      let retrieval: Awaited<ReturnType<typeof retrieveForChat>> | null = null;
       try {
         retrieval = await retrieveForChat(ctx.user.id, input.request);
+        if (retrieval.result.artifacts.length > 0) {
+          void persistMistTrajectory(ctx.user.id, toPersistableMistResult(retrieval.result)).catch((error) => {
+            console.warn("[MIST] async trajectory persistence failed", error instanceof Error ? error.message : String(error));
+          });
+        }
       } catch (error) {
         console.warn("[MIST] governed retrieval unavailable; continuing with supplied evidence", error instanceof Error ? error.message : String(error));
       }
@@ -108,7 +114,7 @@ export const portalChatRouter = router({
         authority: String(ctx.user.id),
         evidence: [
           ...input.evidence,
-          ...retrieval.artifacts.map((artifact) => ({
+          ...(retrieval?.artifacts ?? []).map((artifact) => ({
             name: `MIST artifact ${artifact.cid.slice(0, 8)}`,
             value: artifact.content,
             source: artifact.source,

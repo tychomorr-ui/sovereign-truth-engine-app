@@ -35,13 +35,7 @@ import {
 import { ESOTERIC_PROMPT_PRESETS } from "../../../shared/esotericPrompts";
 import { Streamdown } from "streamdown";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ingestTextDocument } from "../lib/corpus/ingest";
-import { TransformersJsEmbeddingProvider } from "../lib/embedding/transformersjs-provider";
-import { commitMistTrajectory, createMerkleVerificationReport, verifyStoredMerkleCommitment } from "../lib/mist/commitment";
-import { MistCore } from "../lib/mist/core";
-import { createPortalTrajectoryCorpusInput } from "../lib/mist/portal-trajectory";
-import { IndexedDbCorpusStore } from "../lib/storage/indexeddb-corpus-store";
-import { LocalCorpusSimilarityService } from "../lib/corpus/local-similarity";
+import { createMerkleVerificationReport, verifyStoredMerkleCommitment } from "../lib/mist/commitment";
 import type { CorpusDocument } from "../lib/corpus/types";
 import { runBoomerangSwarm } from "../lib/boomerang/swarm";
 import type { BoomerangSwarmResult, ManifoldCandidate } from "../lib/boomerang/types";
@@ -205,7 +199,6 @@ export default function PortalChat() {
   const [showCorpusPanel, setShowCorpusPanel] = useState(false);
   const [corpusDocuments, setCorpusDocuments] = useState<CorpusDocument[]>([]);
   const [corpusStatus, setCorpusStatus] = useState<string | null>(null);
-  const [mistEmbeddingError, setMistEmbeddingError] = useState<string | null>(null);
   const [mistLayerFocus, setMistLayerFocus] = useState<"ALL" | "L4_ECHOES" | "L5_PATTERNS" | "L6_ARCANA">("ALL");
   const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
   const [mistStatus, setMistStatus] = useState<string | null>(null);
@@ -285,16 +278,12 @@ export default function PortalChat() {
     { limit: 24 },
     { enabled: isAuthenticated && showMistPanel },
   );
-  const persistMistTrajectoryMutation = trpc.portal.persistMistTrajectory.useMutation();
-  const persistBoomerangTrajectoryMutation = trpc.portal.persistBoomerangTrajectory.useMutation();
   const boomerangHistoryQuery = trpc.portal.listBoomerangTrajectories.useQuery(
     { limit: 12 },
     { enabled: isAuthenticated && showMistPanel },
   );
   const attachMistAttestationMutation = trpc.portal.chat.attachMistAttestation.useMutation();
   const ingestDocumentMutation = trpc.portal.ingestDocument.useMutation();
-  const mistStoreRef = useRef<IndexedDbCorpusStore | null>(null);
-  const mistProviderRef = useRef<TransformersJsEmbeddingProvider | null>(null);
 
   useEffect(() => {
     if (conversationsQuery.data) {
@@ -376,13 +365,6 @@ export default function PortalChat() {
       setBoomerangResult(boomerangHistoryQuery.data[0]);
     }
   }, [showMistPanel, boomerangResult, boomerangHistoryQuery.data]);
-
-  useEffect(() => {
-    if (!showCorpusPanel) return;
-    const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
-    mistStoreRef.current = store;
-    void store.listDocuments().then(setCorpusDocuments).catch(() => setCorpusStatus("Local corpus storage is unavailable."));
-  }, [showCorpusPanel]);
 
   const signInWithPassword = async () => {
     setAuthError(null);
@@ -539,27 +521,12 @@ export default function PortalChat() {
       return;
     }
     setCorpusStatus(`Reading ${file.name}…`);
-    setMistEmbeddingError(null);
     try {
       const content = await file.text();
-      setCorpusStatus("Chunking document and generating local vectors…");
+      setCorpusStatus("Chunking document and generating server embeddings…");
       const result = await ingestDocumentMutation.mutateAsync({ filename: file.name, mimeType, content });
-      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
-      mistStoreRef.current = store;
-      await store.putDocument(result.document);
-      await Promise.all(result.chunks.map((chunk) => store.putChunk(chunk)));
-      await Promise.all(result.embeddings.map((embedding) => store.putEmbedding(embedding)));
-      try {
-        const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
-        mistProviderRef.current = provider;
-        await new LocalCorpusSimilarityService(store, provider).index(result.document.id);
-        setCorpusStatus(`${file.name} added and indexed with the verified local embedding model.`);
-      } catch {
-        const reason = mistProviderRef.current?.metadata().lastError || "The browser-local model could not initialize.";
-        setMistEmbeddingError(reason);
-        setCorpusStatus(`${file.name} was stored on the server; browser semantic indexing failed.`);
-      }
-      setCorpusDocuments(await store.listDocuments());
+      setCorpusDocuments((documents) => [result.document, ...documents.filter((document) => document.id !== result.document.id)]);
+      setCorpusStatus(`${file.name} added to the server corpus and indexed for MIST retrieval.`);
     } catch (error) {
       setCorpusStatus(error instanceof Error ? error.message : "Document ingestion failed.");
     }
@@ -579,83 +546,19 @@ export default function PortalChat() {
     }
   };
 
-  const handleSaveMistTrajectory = async () => {
-    if (!messages.length || activeConversationId === null) {
-      setMistStatus("Send at least one message before saving a trajectory.");
-      return;
-    }
-
-    setMistStatus("Tracing the local conversation corpus…");
-    try {
-      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
-      mistStoreRef.current = store;
-      const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
-      mistProviderRef.current = provider;
-      const conversation = conversations.find((item) => item.id === activeConversationId);
-      const corpus = await ingestTextDocument(createPortalTrajectoryCorpusInput(activeConversationId, conversation?.title, messages));
-      await store.putDocument(corpus.document);
-      await Promise.all(corpus.chunks.map((chunk) => store.putChunk(chunk)));
-
-      const query = [...messages].reverse().find((message) => message.role === "user")?.content || messages[messages.length - 1].content;
-      const result = await new MistCore(store, provider).retrieve(query, { documentId: corpus.document.id });
-      const persisted = await persistMistTrajectoryMutation.mutateAsync({ result });
-      setSelectedMistTrajectoryId(persisted.trajectoryId);
-      const chunks = await store.listChunks(corpus.document.id);
-      const chunksByCid = new Map(chunks.map((chunk) => [chunk.cid, chunk]));
-      const candidates: ManifoldCandidate[] = (await store.listEmbeddings())
-        .filter((embedding) => chunksByCid.has(embedding.chunkCid) && embedding.vector.length > 0 && embedding.vector.every(Number.isFinite))
-        .map((embedding) => ({ artifact: chunksByCid.get(embedding.chunkCid)!, vector: [...embedding.vector] }));
-      if (candidates.length) {
-        setMistStatus("MIST committed · launching bounded Boomerang return waves…");
-        const swarm = await runBoomerangSwarm(result.query.hash, result.query.hash, candidates);
-        const durableSwarm = await persistBoomerangTrajectoryMutation.mutateAsync({ result: swarm });
-        setBoomerangResult(durableSwarm);
-        setMistStatus(`MIST + Boomerang committed · ${durableSwarm.globalFusion.length} fused artifacts · Ed25519 attestation active.`);
-        await boomerangHistoryQuery.refetch();
-      } else {
-        setMistStatus(`Trajectory saved · ${persisted.merkle.leafCount} leaves · Boomerang unavailable: no local embedding candidates.`);
-      }
-      await mistHistoryQuery.refetch();
-    } catch (error) {
-      console.error("Failed to save MIST trajectory", error);
-      const reason = error instanceof Error ? error.message : "MIST embedding runtime unavailable.";
-      setMistEmbeddingError(reason);
-      setMistStatus(`Trajectory unavailable: ${reason}`);
-    }
-  };
-
-  const handleReexecuteMistTrajectory = async () => {
+  const handleVerifyMistTrajectory = async () => {
     if (!selectedMistTrajectory) return;
-    if (!selectedMistTrajectory.documentId) {
-      setMistVerification({ status: "unavailable", message: "This saved trajectory has no local document binding." });
-      return;
-    }
-
-    setMistVerification({ status: "unavailable", message: "Re-executing local MIST layers…" });
+    setMistVerification({ status: "unavailable", message: "Verifying persisted MIST commitment…" });
     try {
-      const storedVerification = await verifyStoredMerkleCommitment(selectedMistTrajectory.merkle);
-      if (!storedVerification.valid) {
-        setMistVerification({ status: "mismatch", message: storedVerification.reason, computedRoot: selectedMistTrajectory.merkle.root });
-        return;
-      }
-
-      const store = mistStoreRef.current ?? new IndexedDbCorpusStore("keira-portal-mist");
-      mistStoreRef.current = store;
-      const provider = mistProviderRef.current ?? new TransformersJsEmbeddingProvider();
-      mistProviderRef.current = provider;
-      const result = await new MistCore(store, provider).retrieve(selectedMistTrajectory.queryNormalized, { documentId: selectedMistTrajectory.documentId });
-      const recomputed = await commitMistTrajectory(result);
-      const sameLeaves = recomputed.leafCount === selectedMistTrajectory.merkle.leafCount
-        && recomputed.leaves.every((leaf, index) => leaf.leafHash === selectedMistTrajectory.merkle.leaves[index]?.leafHash);
-      const verified = recomputed.root === selectedMistTrajectory.merkle.root && sameLeaves;
+      const verification = await verifyStoredMerkleCommitment(selectedMistTrajectory.merkle);
       setMistVerification({
-        status: verified ? "verified" : "mismatch",
-        message: verified ? "Re-execution reproduced the saved Merkle root and every leaf hash." : "Re-execution produced a different trajectory commitment.",
-        computedRoot: recomputed.root,
+        status: verification.valid ? "verified" : "mismatch",
+        message: verification.valid ? "The server-persisted trajectory commitment is valid." : verification.reason,
+        computedRoot: verification.valid ? selectedMistTrajectory.merkle.root : undefined,
       });
     } catch (error) {
-      console.error("Failed to re-execute MIST trajectory", error);
-      setMistVerification({ status: "unavailable", message: error instanceof Error ? error.message : "Local re-execution is unavailable." });
+      console.error("Failed to verify persisted MIST trajectory", error);
+      setMistVerification({ status: "unavailable", message: error instanceof Error ? error.message : "Persisted trajectory verification is unavailable." });
     }
   };
 
@@ -1195,8 +1098,7 @@ export default function PortalChat() {
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><FileText className="h-4 w-4" /> Local corpus</div>
                   <button type="button" onClick={() => setShowCorpusPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close corpus panel"><X className="h-4 w-4" /></button>
                 </div>
-                <p className="mt-3 max-w-2xl text-xs leading-6 text-[#737b8f]">Upload Markdown or plain text for server-side chunking, deterministic vectorization, and MIST retrieval. Browser-local indexing adds the visual MIST layers when its embedding runtime is available.</p>
-                {mistEmbeddingError && <div className="mt-4 border border-[#9f334d] bg-[#2a0e19] px-3 py-2 text-xs leading-5 text-[#ffb4c0]" role="alert">MIST Embedding Failed: {mistEmbeddingError}</div>}
+                <p className="mt-3 max-w-2xl text-xs leading-6 text-[#737b8f]">Upload Markdown or plain text for server-side chunking, Ollama embeddings, and MIST retrieval. The visualizer reads persisted trajectory layers returned by the server.</p>
                 <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-[#46608f] bg-[#0d1630] px-4 py-4 text-xs uppercase tracking-[0.16em] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#111d3a]">
                   <Upload className="h-4 w-4" />
                   <span>{ingestDocumentMutation.isPending ? "Ingesting document…" : "Choose document"}</span>
@@ -1294,10 +1196,10 @@ export default function PortalChat() {
                   <button type="button" onClick={() => setShowMistPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close MIST trajectory archive"><X className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="max-w-2xl text-xs leading-6 text-[#737b8f]">Trace this conversation through local MIST layers, then persist the resulting trajectory and Merkle commitment to your account.</p>
-                  <Button type="button" onClick={() => void handleSaveMistTrajectory()} disabled={!messages.length || persistMistTrajectoryMutation.isPending || mistStatus === "Tracing the local conversation corpus…"} className="rounded-none bg-[#8be9ff] text-[#041018] hover:bg-[#c4f7ff]">
-                    {persistMistTrajectoryMutation.isPending || mistStatus === "Tracing the local conversation corpus…" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save current trajectory
+                  <p className="max-w-2xl text-xs leading-6 text-[#737b8f]">The server computes MIST layers during chat retrieval and persists the resulting trajectory and Merkle commitment to your account.</p>
+                  <Button type="button" onClick={() => void mistHistoryQuery.refetch()} disabled={mistHistoryQuery.isFetching} className="rounded-none bg-[#8be9ff] text-[#041018] hover:bg-[#c4f7ff]">
+                    {mistHistoryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
+                    Refresh trajectory archive
                   </Button>
                 </div>
                 {mistStatus && <p className="mt-3 text-xs text-[#8be9ff]" role="status">{mistStatus}</p>}
@@ -1320,7 +1222,7 @@ export default function PortalChat() {
                         <div className="mt-2 break-all font-mono text-xs leading-5 text-[#8be9ff]">{selectedMistTrajectory.merkle.root}</div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><div className="text-[#737b8f]">Leaves</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.leafCount}</div></div><div><div className="text-[#737b8f]">Algorithm</div><div className="mt-1 text-[#f3eadb]">{selectedMistTrajectory.merkle.algorithm}</div></div></div>
                         <div className="mt-4 flex flex-wrap gap-2">
-                          <Button type="button" onClick={() => void handleReexecuteMistTrajectory()} disabled={mistVerification?.message === "Re-executing local MIST layers…"} className="flex-1 rounded-none border border-[#6f55c7] bg-transparent text-[#cbb8ff] hover:bg-[#21154d]"><Activity className="mr-2 h-4 w-4" />{mistVerification?.message === "Re-executing local MIST layers…" ? "Re-executing…" : "Re-execute & verify"}</Button>
+                          <Button type="button" onClick={() => void handleVerifyMistTrajectory()} disabled={mistVerification?.message === "Verifying persisted MIST commitment…"} className="flex-1 rounded-none border border-[#6f55c7] bg-transparent text-[#cbb8ff] hover:bg-[#21154d]"><Activity className="mr-2 h-4 w-4" />{mistVerification?.message === "Verifying persisted MIST commitment…" ? "Verifying…" : "Verify persisted root"}</Button>
                           <Button type="button" onClick={() => void handleDownloadMistVerificationReport()} disabled={!mistVerification} className="rounded-none border border-[#273865] bg-transparent text-[#8be9ff] hover:bg-[#13213e]"><FileCode2 className="mr-2 h-4 w-4" />Export signed JSON</Button>
                         </div>
                         {mistVerification && <div className={`mt-3 border p-3 text-xs leading-5 ${mistVerification.status === "verified" ? "border-[#43d9b0] bg-[#0d302b] text-[#8ff5d5]" : mistVerification.status === "mismatch" ? "border-[#ff7f9f] bg-[#351526] text-[#ffb6c7]" : "border-[#6f55c7] bg-[#21154d]/50 text-[#d7c7ff]"}`} role="status"><div className="font-semibold uppercase tracking-[0.16em]">{mistVerification.status === "verified" ? "Root verified" : mistVerification.status === "mismatch" ? "Root mismatch" : "Verification pending"}</div><div className="mt-1">{mistVerification.message}</div>{mistVerification.computedRoot && mistVerification.computedRoot !== selectedMistTrajectory.merkle.root && <div className="mt-2 break-all font-mono text-[0.65rem]">Computed: {mistVerification.computedRoot}</div>}</div>}

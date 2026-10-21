@@ -13,9 +13,10 @@ import { persistReceipt } from "./keira-durable-memory";
 import { createReceipt } from "./sovereign-bus";
 import { hashResponseRequest, readCachedResponse, writeCachedResponse } from "./response-cache";
 import { ENV } from "./_core/env";
-import { readMistTrajectoryByRoot } from "./mist-trajectory";
+import { persistMistTrajectory, readMistTrajectoryByRoot } from "./mist-trajectory";
+import { runMist, type MistResult } from "./mist-core";
+import { toPersistableMistResult } from "./mist-portal-integration";
 import type { MistEvidenceArtifact } from "./keira-prompt";
-import { searchStoredCorpusEvidence } from "./corpus-ingestion";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -62,6 +63,7 @@ export async function streamPortalMessage(
     .map((msg) => ({ role: msg.role as "user" | "portal", content: msg.content }));
 
   let mistEvidence: MistEvidenceArtifact[] = [];
+  let mistResult: MistResult | null = null;
   if (trajectoryRootCid && /^[a-f0-9]{64}$/i.test(trajectoryRootCid)) {
     const trajectory = await readMistTrajectoryByRoot(userId, trajectoryRootCid);
     mistEvidence = trajectory?.merkle.leaves.flatMap((leaf) => {
@@ -75,13 +77,20 @@ export async function streamPortalMessage(
     }) ?? [];
   }
   if (!mistEvidence.length) {
-    mistEvidence = (await searchStoredCorpusEvidence(userId, message)).map(({ cid, snippet }) => ({ cid, snippet }));
+    mistResult = await runMist(message, { userId, maxArtifacts: 30 });
+    mistEvidence = mistResult.artifacts.map((artifact) => ({ cid: artifact.cid, snippet: artifact.content }));
+    if (mistResult.artifacts.length > 0) {
+      void persistMistTrajectory(userId, toPersistableMistResult(mistResult)).catch((error) => {
+        console.warn("[MIST] async trajectory persistence failed", error instanceof Error ? error.message : String(error));
+      });
+    }
   }
 
   const selectedModel = userRecord[0].fastMode === 1 && ENV.localLlmFallbackModel
     ? ENV.localLlmFallbackModel
     : ENV.localLlmModel;
-  const cacheKey = hashResponseRequest({ userId, query: message, trajectoryRootCid, model: selectedModel });
+  const effectiveTrajectoryRootCid = trajectoryRootCid || mistResult?.trajectory_root_cid || undefined;
+  const cacheKey = hashResponseRequest({ userId, query: message, trajectoryRootCid: effectiveTrajectoryRootCid, model: selectedModel });
   const cached = await readCachedResponse(cacheKey);
   if (cached) {
     onToken(cached.response);
@@ -113,8 +122,8 @@ export async function streamPortalMessage(
   await writeCachedResponse({
     cacheKey,
     userId,
-    queryHash: hashResponseRequest({ userId, query: message, trajectoryRootCid, model: selectedModel }),
-    trajectoryRootCid,
+    queryHash: hashResponseRequest({ userId, query: message, trajectoryRootCid: effectiveTrajectoryRootCid, model: selectedModel }),
+    trajectoryRootCid: effectiveTrajectoryRootCid,
     response: adaptiveResponse.response,
     model: adaptiveResponse.metadata.modelId ?? selectedModel,
   });

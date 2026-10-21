@@ -3,7 +3,12 @@ import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { keiraResponseCache } from "../drizzle/schema";
 
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+export const RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function isCacheFresh(createdAt: Date, now = Date.now()): boolean {
+  const age = now - createdAt.getTime();
+  return age >= 0 && age <= RESPONSE_CACHE_TTL_MS;
+}
 
 export function hashResponseRequest(input: {
   userId: number;
@@ -27,7 +32,7 @@ export async function readCachedResponse(cacheKey: string) {
   const rows = await db.select().from(keiraResponseCache).where(eq(keiraResponseCache.cacheKey, cacheKey)).limit(1);
   const row = rows[0];
   if (!row) return null;
-  if (Date.now() - row.createdAt.getTime() > CACHE_TTL_MS) return null;
+  if (!isCacheFresh(row.createdAt)) return null;
   return row;
 }
 
