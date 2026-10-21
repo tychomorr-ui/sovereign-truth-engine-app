@@ -156,7 +156,7 @@ export const appRouter = router({
         mimeType: z.enum(["text/plain", "text/markdown"]),
         content: z.string().min(1).max(2_000_000),
       }))
-      .mutation(({ input }) => ingestCorpusDocument(input)),
+      .mutation(({ ctx, input }) => ingestCorpusDocument(input, ctx.user.id)),
 
     persistMistTrajectory: protectedProcedure
       .input(z.object({ result: z.unknown() }))

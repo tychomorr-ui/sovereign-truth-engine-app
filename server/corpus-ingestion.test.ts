@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingestCorpusDocument } from "./corpus-ingestion";
+import { ingestCorpusDocument, searchStoredCorpusEvidence } from "./corpus-ingestion";
 import { KEIRA_OUTPUT_FILTER_RESPONSE, hardLockResponse } from "./keira-prompt";
 
 describe("Portal corpus ingestion", () => {
@@ -19,6 +19,17 @@ describe("Portal corpus ingestion", () => {
 
   it("rejects unsupported document types", async () => {
     await expect(ingestCorpusDocument({ filename: "evidence.pdf", mimeType: "application/pdf" as unknown as "text/plain", content: "not a PDF" })).rejects.toThrow("Only Markdown and plain-text");
+  });
+
+  it("can retrieve evidence from the server-local vector fallback", async () => {
+    await ingestCorpusDocument({
+      filename: "runtime.txt",
+      mimeType: "text/plain",
+      content: "The local runtime uses deterministic evidence retrieval through the MIST mesh.",
+    }, 987654321);
+    const evidence = await searchStoredCorpusEvidence(987654321, "deterministic evidence retrieval");
+    expect(evidence.length).toBeGreaterThan(0);
+    expect(evidence[0].snippet).toContain("deterministic evidence retrieval");
   });
 
   it("filters generic model drift to the exact sovereign response", () => {

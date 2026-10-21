@@ -205,6 +205,7 @@ export default function PortalChat() {
   const [showCorpusPanel, setShowCorpusPanel] = useState(false);
   const [corpusDocuments, setCorpusDocuments] = useState<CorpusDocument[]>([]);
   const [corpusStatus, setCorpusStatus] = useState<string | null>(null);
+  const [mistEmbeddingError, setMistEmbeddingError] = useState<string | null>(null);
   const [mistLayerFocus, setMistLayerFocus] = useState<"ALL" | "L4_ECHOES" | "L5_PATTERNS" | "L6_ARCANA">("ALL");
   const [selectedMistTrajectoryId, setSelectedMistTrajectoryId] = useState<string | null>(null);
   const [mistStatus, setMistStatus] = useState<string | null>(null);
@@ -538,6 +539,7 @@ export default function PortalChat() {
       return;
     }
     setCorpusStatus(`Reading ${file.name}…`);
+    setMistEmbeddingError(null);
     try {
       const content = await file.text();
       setCorpusStatus("Chunking document and generating local vectors…");
@@ -553,7 +555,9 @@ export default function PortalChat() {
         await new LocalCorpusSimilarityService(store, provider).index(result.document.id);
         setCorpusStatus(`${file.name} added and indexed with the verified local embedding model.`);
       } catch {
-        setCorpusStatus(`${file.name} added with local deterministic vectors. Browser model indexing will retry when MIST runs.`);
+        const reason = mistProviderRef.current?.metadata().lastError || "The browser-local model could not initialize.";
+        setMistEmbeddingError(reason);
+        setCorpusStatus(`${file.name} was stored on the server; browser semantic indexing failed.`);
       }
       setCorpusDocuments(await store.listDocuments());
     } catch (error) {
@@ -614,7 +618,9 @@ export default function PortalChat() {
       await mistHistoryQuery.refetch();
     } catch (error) {
       console.error("Failed to save MIST trajectory", error);
-      setMistStatus(error instanceof Error ? `Trajectory unavailable: ${error.message}` : "Trajectory could not be saved.");
+      const reason = error instanceof Error ? error.message : "MIST embedding runtime unavailable.";
+      setMistEmbeddingError(reason);
+      setMistStatus(`Trajectory unavailable: ${reason}`);
     }
   };
 
@@ -1189,7 +1195,8 @@ export default function PortalChat() {
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[#8be9ff]"><FileText className="h-4 w-4" /> Local corpus</div>
                   <button type="button" onClick={() => setShowCorpusPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close corpus panel"><X className="h-4 w-4" /></button>
                 </div>
-                <p className="mt-3 max-w-2xl text-xs leading-6 text-[#737b8f]">Upload Markdown or plain text for local chunking, vectorization, and MIST retrieval. Documents remain in this browser’s local corpus store.</p>
+                <p className="mt-3 max-w-2xl text-xs leading-6 text-[#737b8f]">Upload Markdown or plain text for server-side chunking, deterministic vectorization, and MIST retrieval. Browser-local indexing adds the visual MIST layers when its embedding runtime is available.</p>
+                {mistEmbeddingError && <div className="mt-4 border border-[#9f334d] bg-[#2a0e19] px-3 py-2 text-xs leading-5 text-[#ffb4c0]" role="alert">MIST Embedding Failed: {mistEmbeddingError}</div>}
                 <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-[#46608f] bg-[#0d1630] px-4 py-4 text-xs uppercase tracking-[0.16em] text-[#8be9ff] transition hover:border-[#8be9ff] hover:bg-[#111d3a]">
                   <Upload className="h-4 w-4" />
                   <span>{ingestDocumentMutation.isPending ? "Ingesting document…" : "Choose document"}</span>

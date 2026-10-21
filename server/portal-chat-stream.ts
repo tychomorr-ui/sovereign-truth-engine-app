@@ -15,6 +15,7 @@ import { hashResponseRequest, readCachedResponse, writeCachedResponse } from "./
 import { ENV } from "./_core/env";
 import { readMistTrajectoryByRoot } from "./mist-trajectory";
 import type { MistEvidenceArtifact } from "./keira-prompt";
+import { searchStoredCorpusEvidence } from "./corpus-ingestion";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -72,6 +73,9 @@ export async function streamPortalMessage(
         return [];
       }
     }) ?? [];
+  }
+  if (!mistEvidence.length) {
+    mistEvidence = (await searchStoredCorpusEvidence(userId, message)).map(({ cid, snippet }) => ({ cid, snippet }));
   }
 
   const selectedModel = userRecord[0].fastMode === 1 && ENV.localLlmFallbackModel

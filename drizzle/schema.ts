@@ -80,6 +80,20 @@ export const keiraResponseCache = mysqlTable("keiraResponseCache", {
 export type KeiraResponseCache = typeof keiraResponseCache.$inferSelect;
 export type InsertKeiraResponseCache = typeof keiraResponseCache.$inferInsert;
 
+/** Durable local corpus fallback used when browser WASM embeddings are unavailable. */
+export const keiraCorpusVectors = mysqlTable("keiraCorpusVectors", {
+  id: varchar("id", { length: 220 }).primaryKey(),
+  userId: int("userId").notNull(),
+  documentId: varchar("documentId", { length: 160 }).notNull(),
+  artifactCid: varchar("artifactCid", { length: 160 }).notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  content: longtext("content").notNull(),
+  vectorJson: longtext("vectorJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraCorpusVector = typeof keiraCorpusVectors.$inferSelect;
+export type InsertKeiraCorpusVector = typeof keiraCorpusVectors.$inferInsert;
+
 export const keiraContextEntries = mysqlTable("keiraContextEntries", { id: int("id").autoincrement().primaryKey(), userId: int("userId").notNull(), label: varchar("label", { length: 120 }).notNull(), content: text("content").notNull(), kind: mysqlEnum("kind", ["fact", "preference", "goal", "note"]).default("note").notNull(), isActive: int("isActive").default(1).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull() });
 export type KeiraContextEntry = typeof keiraContextEntries.$inferSelect;
 export type InsertKeiraContextEntry = typeof keiraContextEntries.$inferInsert;
