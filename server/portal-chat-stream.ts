@@ -17,6 +17,7 @@ import { persistMistTrajectory, readMistTrajectoryByRoot } from "./mist-trajecto
 import { runMist, type MistResult } from "./mist-core";
 import { toPersistableMistResult } from "./mist-portal-integration";
 import type { MistEvidenceArtifact } from "./keira-prompt";
+import { classifyFastPath } from "../client/src/lib/keira/fast-path";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -28,6 +29,33 @@ export async function streamPortalMessage(
   trajectoryRootCid?: string,
 ) {
   await portalChat.addMessage(conversationId, userId, "user", message);
+
+  const fastPath = classifyFastPath(message);
+  if (fastPath.isFastPath && fastPath.classification && fastPath.response) {
+    const receipt = createReceipt({
+      operation: "portal.conversation.fast_path",
+      intelligence_mode: "deterministic",
+      provider: "keira-fast-path",
+      model: null,
+      context_sources: [`fast-path:${fastPath.classification}`],
+      policy: "deterministic fast path; zero retrieval and zero model inference; external providers disabled",
+      verification: `canned persona response returned for ${fastPath.classification}; no retrieval or inference was attempted`,
+      result_state: "PROVEN",
+    });
+    onToken(fastPath.response);
+    await persistReceipt(userId, receipt);
+    await portalChat.addMessage(conversationId, userId, "portal", fastPath.response);
+    return {
+      response: fastPath.response,
+      metadata: {
+        provider: "deterministic",
+        modelId: null,
+        cached: false,
+        fastPath: fastPath.classification,
+        receipt,
+      },
+    };
+  }
 
   let missionState = cmapSessions.get(conversationId) ?? await initializecMAPSession(userId);
   missionState = processcMAPMessage(message, missionState).missionState;
