@@ -18,6 +18,8 @@ import { runMist, type MistResult } from "./mist-core";
 import { toPersistableMistResult } from "./mist-portal-integration";
 import type { MistEvidenceArtifact } from "./keira-prompt";
 import { classifyFastPath } from "../client/src/lib/keira/fast-path";
+import { classifyAndRoute, deterministicResponseForDecision } from "./keira-routing-core";
+import { recordKeiraRoute } from "./keira-operational-metrics";
 
 const cmapSessions = new Map<number, MissionState>();
 
@@ -28,6 +30,7 @@ export async function streamPortalMessage(
   onToken: (token: string) => void,
   trajectoryRootCid?: string,
 ) {
+  const requestStartedAt = Date.now();
   await portalChat.addMessage(conversationId, userId, "user", message);
 
   const fastPath = classifyFastPath(message);
@@ -45,6 +48,7 @@ export async function streamPortalMessage(
     onToken(fastPath.response);
     await persistReceipt(userId, receipt);
     await portalChat.addMessage(conversationId, userId, "portal", fastPath.response);
+    recordKeiraRoute({ route: "FAST_PATH", latencyMs: Date.now() - requestStartedAt, cacheHit: false, error: false, confidence: 1 });
     return {
       response: fastPath.response,
       metadata: {
@@ -52,6 +56,37 @@ export async function streamPortalMessage(
         modelId: null,
         cached: false,
         fastPath: fastPath.classification,
+        receipt,
+      },
+    };
+  }
+
+  const routingDecision = classifyAndRoute(message);
+  const deterministicResponse = deterministicResponseForDecision(routingDecision);
+  if (routingDecision.execution === "DETERMINISTIC" && deterministicResponse) {
+    const receipt = createReceipt({
+      operation: "portal.conversation.deterministic",
+      intelligence_mode: "deterministic",
+      provider: "keira-deterministic-core",
+      model: null,
+      context_sources: [`intent:${routingDecision.intent}`],
+      policy: "deterministic core; no retrieval or model inference; external providers disabled",
+      verification: routingDecision.reason,
+      result_state: "PROVEN",
+    });
+    onToken(deterministicResponse);
+    await persistReceipt(userId, receipt);
+    await portalChat.addMessage(conversationId, userId, "portal", deterministicResponse);
+    recordKeiraRoute({ route: "DETERMINISTIC", latencyMs: Date.now() - requestStartedAt, cacheHit: false, error: false, confidence: routingDecision.confidence });
+    return {
+      response: deterministicResponse,
+      metadata: {
+        provider: "deterministic",
+        modelId: null,
+        cached: false,
+        intent: routingDecision.intent,
+        execution: routingDecision.execution,
+        routingConfidence: routingDecision.confidence,
         receipt,
       },
     };
@@ -104,7 +139,7 @@ export async function streamPortalMessage(
       }
     }) ?? [];
   }
-  if (!mistEvidence.length) {
+  if (!mistEvidence.length && routingDecision.requiresRetrieval) {
     mistResult = await runMist(message, { userId, maxArtifacts: 30 });
     mistEvidence = mistResult.artifacts.map((artifact) => ({ cid: artifact.cid, snippet: artifact.content }));
     if (mistResult.artifacts.length > 0) {
@@ -134,6 +169,7 @@ export async function streamPortalMessage(
     });
     await persistReceipt(userId, receipt);
     await portalChat.addMessage(conversationId, userId, "portal", cached.response);
+    recordKeiraRoute({ route: "CACHE", latencyMs: Date.now() - requestStartedAt, cacheHit: true, error: false, confidence: routingDecision.confidence });
     return { response: cached.response, metadata: { provider: "local", modelId: cached.model, cached: true, receipt } };
   }
 
@@ -158,6 +194,7 @@ export async function streamPortalMessage(
 
   await persistReceipt(userId, adaptiveResponse.metadata.receipt);
   await portalChat.addMessage(conversationId, userId, "portal", adaptiveResponse.response);
+  recordKeiraRoute({ route: mistEvidence.length || routingDecision.requiresRetrieval ? "MIST" : "LLM", latencyMs: Date.now() - requestStartedAt, cacheHit: false, error: false, confidence: routingDecision.confidence });
   const updates = adaptiveResponse.metadata.learningMemoryUpdates;
   if (Object.keys(updates).length > 0) await portalChat.updateLearningMemory(userId, updates);
 

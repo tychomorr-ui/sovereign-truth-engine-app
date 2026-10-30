@@ -38,6 +38,7 @@ import { runGovernedLocalGeneration } from "./governed-local-intelligence";
 import { getKeiraPublicIdentityStatus, issueKeiraIdentityReceipt } from "./keira-identity-persistence";
 import { retrieveForChat, toPersistableMistResult } from "./mist-portal-integration";
 import { persistMistTrajectory } from "./mist-trajectory";
+import { getKeiraOperationalState } from "./keira-operational-metrics";
 
 const cmapSessions = new Map<number, MissionState>(); // Keyed by conversationId
 const resilienceControllers = new Map<number, OfflineResilienceController>();
@@ -59,6 +60,8 @@ export const portalChatRouter = router({
     .mutation(async () => issueKeiraIdentityReceipt()),
 
   getRuntimeStatus: protectedProcedure.query(async () => getRuntimeReport()),
+
+  getOperationalState: protectedProcedure.query(() => getKeiraOperationalState()),
 
   getLocalModelStatus: protectedProcedure.query(async () => {
     return await getConfiguredLocalModelProvider().modelInfo();
