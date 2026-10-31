@@ -116,8 +116,8 @@ export async function executeBoomerangForUser(userId: number, query: string): Pr
     const result = await runBoomerangSwarm(queryHash, corpusId, candidates, { maxHops: 12, returnMaxHops: 12, coverageThreshold: 0.7 });
     const completedAt = new Date();
     const persisted = await persistBoomerangTrajectory(userId, result);
-    await persistBoomerangTelemetry({ userId, executionId: persisted.trajectoryId, trajectoryId: persisted.trajectoryId, corpusId, startedAt, completedAt, status: "COMPLETED", result: persisted, totalSwarmLatencyMs: completedAt.getTime() - startedAt.getTime() });
-    return { executionId: persisted.trajectoryId, trajectoryId: persisted.trajectoryId, corpusId, result: persisted };
+    await persistBoomerangTelemetry({ userId, executionId, trajectoryId: persisted.trajectoryId, corpusId, startedAt, completedAt, status: "COMPLETED", result: persisted, totalSwarmLatencyMs: completedAt.getTime() - startedAt.getTime() });
+    return { executionId, trajectoryId: persisted.trajectoryId, corpusId, result: persisted };
   } catch (error) {
     const completedAt = new Date();
     await persistBoomerangTelemetry({ userId, executionId, corpusId, startedAt, completedAt, status: "FAILED", errorState: error instanceof Error ? error.message : "Unknown Boomerang execution failure.", totalSwarmLatencyMs: completedAt.getTime() - startedAt.getTime() }).catch((telemetryError) => console.error("[Boomerang] Failed to persist failure telemetry", telemetryError));
