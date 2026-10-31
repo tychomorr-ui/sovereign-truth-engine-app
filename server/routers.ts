@@ -132,6 +132,10 @@ export const appRouter = router({
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid owner access token." });
         }
 
+        if (await db.hasProvisionedOwnerOrAdmin()) {
+          throw new TRPCError({ code: "CONFLICT", message: "Owner bootstrap is closed: an owner or admin account is already provisioned." });
+        }
+
         const owner = await db.getUserByEmail("tyler@nexinus.net");
         if (!owner) throw new TRPCError({ code: "NOT_FOUND", message: "Owner account is not provisioned." });
 

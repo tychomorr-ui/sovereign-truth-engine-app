@@ -1,10 +1,10 @@
 import type { Request, Response } from "express";
 import { ENV } from "./_core/env";
 
-export function getBetaOpenStatus() {
+export function getBetaOpenStatus(betaOpen = ENV.betaOpenMode) {
   return {
-    betaOpen: ENV.betaOpenMode,
-    authentication: ENV.betaOpenMode ? "temporary-beta-session" : "normal-authentication",
+    betaOpen,
+    authentication: "normal-authentication",
     ownerPrivileges: false,
   } as const;
 }

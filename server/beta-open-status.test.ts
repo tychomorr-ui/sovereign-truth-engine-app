@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { betaOpenStatusHandler } from "./beta-open-status";
+import { betaOpenStatusHandler, getBetaOpenStatus } from "./beta-open-status";
 
 let server: ReturnType<typeof createServer>;
 let baseUrl = "";
@@ -32,5 +32,13 @@ describe("temporary KEIRA beta-open mode", () => {
       ownerPrivileges: false,
     });
     expect(JSON.stringify(body)).not.toContain("BETA_OPEN_MODE");
+  });
+
+  it("keeps beta availability separate from authentication when beta mode is enabled", () => {
+    expect(getBetaOpenStatus(true)).toEqual({
+      betaOpen: true,
+      authentication: "normal-authentication",
+      ownerPrivileges: false,
+    });
   });
 });

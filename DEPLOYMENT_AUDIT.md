@@ -35,7 +35,7 @@ The project has been repeatedly validated in the hosted sandbox with a successfu
 |---|---|
 | `/` and `/portal-chat` | Portal Chat frontend routes |
 | `/api/trpc` | Primary typed backend API |
-| `/api/beta-status` | Public beta-mode status; currently reports temporary beta session |
+| `/api/beta-status` | Public beta-mode availability status; never authenticates the caller |
 | `/api/keira-identity/health` | Public-safe identity encryption readiness status |
 | `/.well-known/keira-identity.json` | Public KEIRA identity manifest/status |
 | `/.well-known/keira-receipt.json` | Public KEIRA identity receipt/status |
@@ -45,9 +45,9 @@ The project has been repeatedly validated in the hosted sandbox with a successfu
 
 ## Authentication posture
 
-Normal deployment expects session-based sovereign authentication and protected tRPC procedures. The hosted project is currently intentionally configured with `BETA_OPEN_MODE=true` for operator testing. In this mode, requests without a valid session are assigned a dedicated non-owner `beta@keira.local` user. The beta user has `role=user`, no password, and cannot use admin procedures.
+Normal deployment uses signed session-based sovereign authentication and protected tRPC procedures. `BETA_OPEN_MODE` is an operational availability flag only: it may report that temporary beta access is available, but it never creates a user, session, owner privilege, or admin privilege. Requests without a valid sovereign session remain unauthenticated.
 
-This configuration is suitable only for controlled beta testing. It is not safe for a public production deployment because all anonymous visitors share the same beta identity and therefore the same beta-owned conversations/context/memory surfaces. Set `BETA_OPEN_MODE=false` and restart before production use.
+For public production, keep beta access disabled unless a separate, explicitly isolated beta session mechanism is implemented.
 
 ## Environment/configuration findings
 

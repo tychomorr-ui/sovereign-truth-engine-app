@@ -88,6 +88,13 @@ export async function promoteUserToOwner(id: number) {
   return getUserById(id);
 }
 
+export async function hasProvisionedOwnerOrAdmin(): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const provisioned = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+  return provisioned.length > 0;
+}
+
 export async function updateUserProfile(id: number, input: {
   avatarUrl?: string | null;
   avatarGlyph?: string | null;

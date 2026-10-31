@@ -14,7 +14,7 @@ The Sovereign Truth Trifecta Portal Chat is designed for seamless deployment on 
     -   Build your project (install dependencies, compile TypeScript, bundle assets).
     -   Provision necessary infrastructure (serverless functions, database connections).
     -   Deploy the application to a unique Manus subdomain (e.g., `sovereignapp-hkcgwye7.manus.space`).
-    -   Enable integrated services (Stripe, OAuth, S3 storage).
+    -   Enable integrated services (Stripe and S3 storage); KEIRA authentication uses first-party signed sovereign sessions.
 4.  **Live URL**: Once deployed, your application will be accessible via the provided Manus subdomain.
 
 ### Continuous Deployment (CD)
