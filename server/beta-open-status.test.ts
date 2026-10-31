@@ -27,7 +27,7 @@ describe("temporary KEIRA beta-open mode", () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      betaOpen: false,
+      betaOpen: getBetaOpenStatus().betaOpen,
       authentication: "normal-authentication",
       ownerPrivileges: false,
     });

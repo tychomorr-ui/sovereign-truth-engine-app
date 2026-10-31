@@ -140,7 +140,7 @@ Drizzle migrations are part of the repository and current schema checks have pas
 
 ## Deployment risks
 
-1. Leaving beta-open mode enabled exposes a shared non-owner identity.
+1. Leaving beta-open availability enabled may advertise a testing surface; the current implementation does not authenticate anonymous callers.
 2. Attempting to reach a private Ollama address from hosted Manus may fail due to network isolation; failure must remain explicit.
 3. A process-local queue and in-memory cMAP state are not safe assumptions under restart or multiple instances.
 4. Cross-origin scraper/API access is not configured with an explicit allowlist.
