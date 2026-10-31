@@ -38,6 +38,25 @@ async function merkleRoot(values: unknown[]): Promise<string> {
   return hashes[0];
 }
 
+export function canonicalBoomerangEvidence(result: Pick<BoomerangSwarmResult, "agents" | "verifiedEnvelopes" | "rejectedEnvelopes" | "globalFusion">): string {
+  return canonicalJson({
+    agents: result.agents,
+    verifiedEnvelopes: result.verifiedEnvelopes,
+    rejectedEnvelopes: result.rejectedEnvelopes,
+    globalFusion: result.globalFusion,
+  });
+}
+
+export async function computeBoomerangMerkleRoot(result: Pick<BoomerangSwarmResult, "agents" | "verifiedEnvelopes" | "rejectedEnvelopes" | "globalFusion">): Promise<string> {
+  const leaves = [
+    ...result.agents.map((agent) => ({ kind: "agent", value: agent })),
+    ...result.verifiedEnvelopes.map((envelope) => ({ kind: "verified-envelope", value: envelope })),
+    ...result.rejectedEnvelopes.map((envelope) => ({ kind: "rejected-envelope", value: envelope })),
+    ...result.globalFusion.map((fusion) => ({ kind: "fusion", value: fusion })),
+  ];
+  return merkleRoot(leaves);
+}
+
 function assertCandidateMap(candidates: ManifoldCandidate[]): Map<string, ManifoldCandidate> {
   const map = new Map<string, ManifoldCandidate>();
   for (const candidate of candidates) {
@@ -106,17 +125,15 @@ export async function runBoomerangSwarm(
     .sort((left, right) => right.weightedRrfScore - left.weightedRrfScore || left.artifact.cid.localeCompare(right.artifact.cid))
     .slice(0, 30)
     .map((item, index) => ({ ...item, rank: index + 1 }));
-  const root = await merkleRoot(globalFusion.map((item) => ({ artifact_cid: item.artifact.cid, rank: item.rank, weighted_rrf_score: item.weightedRrfScore })));
-
-  return {
-    schemaVersion: "2.0.0-phase10",
+  const unsignedResult = {
+    schemaVersion: "2.0.0-phase10" as const,
     queryHash,
     agents,
     verifiedEnvelopes,
     rejectedEnvelopes,
     globalFusion,
-    merkleRoot: root,
-    agentSignatureScheme: "SHA-256-INTEGRITY-ONLY",
-    serverAttestation: "PENDING_SERVER_ED25519",
+    agentSignatureScheme: "SHA-256-INTEGRITY-ONLY" as const,
+    serverAttestation: "PENDING_SERVER_ED25519" as const,
   };
+  return { ...unsignedResult, merkleRoot: await computeBoomerangMerkleRoot(unsignedResult) };
 }

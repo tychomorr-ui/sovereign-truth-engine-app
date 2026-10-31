@@ -16,6 +16,7 @@ import type { MistResult } from "../client/src/lib/mist/types";
 import { listBoomerangTrajectories, persistBoomerangTrajectory, readBoomerangTrajectory } from "./boomerang-persistence";
 import type { BoomerangSwarmResult } from "../client/src/lib/boomerang/types";
 import { ingestCorpusDocument } from "./corpus-ingestion";
+import { executeBoomerangForUser, listBoomerangTelemetry, verifyBoomerangExport } from "./boomerang-telemetry";
 
 export function canClaimResetAccount(user: { loginMethod: string | null; passwordHash: string | null } | null | undefined) {
   return user?.loginMethod === "auth-reset" && !user.passwordHash;
@@ -181,6 +182,18 @@ export const appRouter = router({
     listBoomerangTrajectories: protectedProcedure
       .input(z.object({ limit: z.number().int().min(1).max(100).default(24) }))
       .query(async ({ ctx, input }) => listBoomerangTrajectories(ctx.user.id, input.limit)),
+
+    executeBoomerang: protectedProcedure
+      .input(z.object({ query: z.string().trim().min(1).max(4000) }))
+      .mutation(async ({ ctx, input }) => executeBoomerangForUser(ctx.user.id, input.query)),
+
+    listBoomerangTelemetry: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).default(24) }))
+      .query(async ({ ctx, input }) => listBoomerangTelemetry(ctx.user.id, input.limit)),
+
+    verifyBoomerangExport: protectedProcedure
+      .input(z.object({ result: z.unknown(), merkleRoot: z.string().min(1), signatureHex: z.string().nullable().optional(), pubkeyHex: z.string().nullable().optional() }))
+      .mutation(async ({ input }) => verifyBoomerangExport({ result: input.result as BoomerangSwarmResult, merkleRoot: input.merkleRoot, signatureHex: input.signatureHex, pubkeyHex: input.pubkeyHex })),
   }),
 });
 

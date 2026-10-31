@@ -253,3 +253,40 @@ export const keiraBoomerangTrajectories = mysqlTable("keiraBoomerangTrajectories
 });
 export type KeiraBoomerangTrajectory = typeof keiraBoomerangTrajectories.$inferSelect;
 export type InsertKeiraBoomerangTrajectory = typeof keiraBoomerangTrajectories.$inferInsert;
+
+/** Operational metrics correlated to one persisted Boomerang execution; no raw corpus contents. */
+export const keiraBoomerangTelemetry = mysqlTable("keiraBoomerangTelemetry", {
+  executionId: varchar("executionId", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull(),
+  trajectoryId: varchar("trajectoryId", { length: 36 }),
+  corpusId: varchar("corpusId", { length: 128 }).notNull(),
+  startedAt: timestamp("startedAt").notNull(),
+  completedAt: timestamp("completedAt"),
+  durationMs: int("durationMs"),
+  status: varchar("status", { length: 32 }).notNull(),
+  agentCount: int("agentCount").notNull(),
+  hopCount: int("hopCount").notNull(),
+  convergenceStatus: varchar("convergenceStatus", { length: 32 }).notNull(),
+  errorState: text("errorState"),
+  coreEvidenceCount: int("coreEvidenceCount").notNull(),
+  peripheralEvidenceCount: int("peripheralEvidenceCount").notNull(),
+  coverage: text("coverage").notNull(),
+  remainingHops: int("remainingHops").notNull(),
+  digestiveSummaryJson: text("digestiveSummaryJson").notNull(),
+  fusionStatus: varchar("fusionStatus", { length: 32 }).notNull(),
+  merkleRoot: varchar("merkleRoot", { length: 128 }),
+  attestationStatus: varchar("attestationStatus", { length: 32 }).notNull(),
+  verificationStatus: varchar("verificationStatus", { length: 32 }).notNull(),
+  envelopeCount: int("envelopeCount").notNull(),
+  rejectedArtifactCount: int("rejectedArtifactCount").notNull(),
+  ingestionLatencyMs: int("ingestionLatencyMs"),
+  agentProcessingLatencyMs: int("agentProcessingLatencyMs"),
+  fusionLatencyMs: int("fusionLatencyMs"),
+  exportLatencyMs: int("exportLatencyMs"),
+  verificationLatencyMs: int("verificationLatencyMs"),
+  totalSwarmLatencyMs: int("totalSwarmLatencyMs"),
+  retryCount: int("retryCount").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KeiraBoomerangTelemetry = typeof keiraBoomerangTelemetry.$inferSelect;
+export type InsertKeiraBoomerangTelemetry = typeof keiraBoomerangTelemetry.$inferInsert;

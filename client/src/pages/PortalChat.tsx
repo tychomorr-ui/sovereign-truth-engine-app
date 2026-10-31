@@ -185,6 +185,7 @@ export default function PortalChat() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [boomerangQuery, setBoomerangQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
@@ -282,6 +283,12 @@ export default function PortalChat() {
     { limit: 12 },
     { enabled: isAuthenticated && showMistPanel },
   );
+  const boomerangTelemetryQuery = trpc.portal.listBoomerangTelemetry.useQuery(
+    { limit: 8 },
+    { enabled: isAuthenticated && showMistPanel },
+  );
+  const executeBoomerangMutation = trpc.portal.executeBoomerang.useMutation();
+  const verifyBoomerangMutation = trpc.portal.verifyBoomerangExport.useMutation();
   const attachMistAttestationMutation = trpc.portal.chat.attachMistAttestation.useMutation();
   const ingestDocumentMutation = trpc.portal.ingestDocument.useMutation();
 
@@ -614,6 +621,7 @@ export default function PortalChat() {
 
     const userMessage = inputValue.trim();
     setInputValue("");
+    setBoomerangQuery(userMessage);
     setSendError(null);
     setStreamingResponse("");
     setIsLoading(true);
@@ -655,6 +663,36 @@ export default function PortalChat() {
       setSendError(error instanceof Error ? error.message : "KEIRA could not complete the request.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRunBoomerang = async () => {
+    const query = boomerangQuery.trim();
+    if (!query || executeBoomerangMutation.isPending) return;
+    setMistStatus("Running Boomerang against the durable uploaded corpus…");
+    try {
+      const execution = await executeBoomerangMutation.mutateAsync({ query });
+      setBoomerangResult(execution.result);
+      setMistStatus(`Live swarm complete · execution ${execution.executionId} · ${execution.result.agents.length} agents · ${execution.result.globalFusion.length} fused artifacts.`);
+      await Promise.all([boomerangHistoryQuery.refetch(), boomerangTelemetryQuery.refetch()]);
+    } catch (error) {
+      setMistStatus(error instanceof Error ? `Live swarm failed: ${error.message}` : "Live swarm failed.");
+    }
+  };
+
+  const handleVerifyBoomerang = async () => {
+    if (!boomerangResult || verifyBoomerangMutation.isPending) return;
+    setMistStatus("Verifying Boomerang trajectory, envelopes, fusion, and attestation…");
+    try {
+      const verification = await verifyBoomerangMutation.mutateAsync({
+        result: boomerangResult,
+        merkleRoot: boomerangResult.merkleRoot,
+        signatureHex: boomerangResult.serverSignatureHex ?? null,
+        pubkeyHex: boomerangResult.serverPubkeyHex ?? null,
+      });
+      setMistStatus(`${verification.status}: ${verification.reason}`);
+    } catch (error) {
+      setMistStatus(error instanceof Error ? `Verification failed: ${error.message}` : "Verification failed.");
     }
   };
 
@@ -1196,13 +1234,29 @@ export default function PortalChat() {
                   <button type="button" onClick={() => setShowMistPanel(false)} className="rounded-sm p-1 text-[#737b8f] hover:text-[#f3eadb]" aria-label="Close MIST trajectory archive"><X className="h-4 w-4" /></button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="max-w-2xl text-xs leading-6 text-[#737b8f]">The server computes MIST layers during chat retrieval and persists the resulting trajectory and Merkle commitment to your account.</p>
-                  <Button type="button" onClick={() => void mistHistoryQuery.refetch()} disabled={mistHistoryQuery.isFetching} className="rounded-none bg-[#8be9ff] text-[#041018] hover:bg-[#c4f7ff]">
-                    {mistHistoryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
-                    Refresh trajectory archive
-                  </Button>
+                  <p className="max-w-2xl text-xs leading-6 text-[#737b8f]">MIST and Boomerang execute against the authenticated durable corpus. The radar and telemetry below are populated only by persisted server results.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" onClick={() => void handleRunBoomerang()} disabled={!boomerangQuery.trim() || executeBoomerangMutation.isPending} className="rounded-none bg-[#cbb8ff] text-[#120a24] hover:bg-[#e4d9ff]">
+                      {executeBoomerangMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
+                      {executeBoomerangMutation.isPending ? "Running swarm…" : "Run live Boomerang"}
+                    </Button>
+                    <Button type="button" onClick={() => void handleVerifyBoomerang()} disabled={!boomerangResult || verifyBoomerangMutation.isPending} className="rounded-none border border-[#43d9b0] bg-transparent text-[#8ff5d5] hover:bg-[#0d302b]">
+                      {verifyBoomerangMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                      Verify swarm
+                    </Button>
+                    <Button type="button" onClick={() => void mistHistoryQuery.refetch()} disabled={mistHistoryQuery.isFetching} className="rounded-none bg-[#8be9ff] text-[#041018] hover:bg-[#c4f7ff]">
+                      {mistHistoryQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
+                      Refresh archive
+                    </Button>
+                  </div>
                 </div>
                 {mistStatus && <p className="mt-3 text-xs text-[#8be9ff]" role="status">{mistStatus}</p>}
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  <div className="border border-[#273865] bg-[#0d1630] p-3"><div className="text-[0.58rem] uppercase tracking-[0.14em] text-[#737b8f]">Recent executions</div><div className="mt-1 text-lg text-[#f3eadb]">{boomerangTelemetryQuery.data?.length ?? 0}</div></div>
+                  <div className="border border-[#273865] bg-[#0d1630] p-3"><div className="text-[0.58rem] uppercase tracking-[0.14em] text-[#737b8f]">Success rate</div><div className="mt-1 text-lg text-[#8ff5d5]">{boomerangTelemetryQuery.data?.length ? `${Math.round((boomerangTelemetryQuery.data.filter((item) => item.status === "COMPLETED").length / boomerangTelemetryQuery.data.length) * 100)}%` : "—"}</div></div>
+                  <div className="border border-[#273865] bg-[#0d1630] p-3"><div className="text-[0.58rem] uppercase tracking-[0.14em] text-[#737b8f]">Avg latency</div><div className="mt-1 text-lg text-[#8be9ff]">{boomerangTelemetryQuery.data?.length ? `${Math.round(boomerangTelemetryQuery.data.reduce((sum, item) => sum + (item.totalSwarmLatencyMs ?? 0), 0) / boomerangTelemetryQuery.data.length)} ms` : "—"}</div></div>
+                  <div className="border border-[#273865] bg-[#0d1630] p-3"><div className="text-[0.58rem] uppercase tracking-[0.14em] text-[#737b8f]">Convergence</div><div className="mt-1 text-lg text-[#cbb8ff]">{boomerangTelemetryQuery.data?.filter((item) => item.convergenceStatus === "CONVERGED").length ?? 0}</div></div>
+                </div>
                 {boomerangResult && <div className="mt-4"><BoomerangRadar result={boomerangResult} /></div>}
                 <div className="mt-4 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
