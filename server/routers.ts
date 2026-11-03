@@ -196,8 +196,8 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => listBoomerangTelemetry(ctx.user.id, input.limit)),
 
     verifyBoomerangExport: protectedProcedure
-      .input(z.object({ result: z.unknown(), merkleRoot: z.string().min(1), signatureHex: z.string().nullable().optional(), pubkeyHex: z.string().nullable().optional() }))
-      .mutation(async ({ input }) => verifyBoomerangExport({ result: input.result as BoomerangSwarmResult, merkleRoot: input.merkleRoot, signatureHex: input.signatureHex, pubkeyHex: input.pubkeyHex })),
+      .input(z.object({ result: z.unknown(), merkleRoot: z.string().min(1), signatureHex: z.string().nullable().optional(), pubkeyHex: z.string().nullable().optional(), keyId: z.string().nullable().optional() }))
+      .mutation(async ({ input }) => verifyBoomerangExport({ result: input.result as BoomerangSwarmResult, merkleRoot: input.merkleRoot, signatureHex: input.signatureHex, pubkeyHex: input.pubkeyHex, keyId: input.keyId })),
   }),
 });
 

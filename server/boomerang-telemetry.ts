@@ -8,6 +8,7 @@ import { getDb } from "./db";
 import { persistBoomerangTrajectory } from "./boomerang-persistence";
 import { runBoomerangSwarm } from "../client/src/lib/boomerang/swarm";
 import { computeBoomerangMerkleRoot } from "../client/src/lib/boomerang/swarm";
+import { deriveKeiraKeyId } from "./keira-identity";
 
 type CorpusRow = { userId: number; documentId: string; artifactCid: string; filename: string; content: string; vectorJson: string };
 
@@ -136,6 +137,7 @@ export async function verifyBoomerangExport(input: {
   merkleRoot: string;
   signatureHex?: string | null;
   pubkeyHex?: string | null;
+  keyId?: string | null;
 }): Promise<{ accepted: boolean; status: "VERIFIED" | "REJECTED"; reason: string; computedMerkleRoot: string }> {
   const computedMerkleRoot = await computeBoomerangMerkleRoot(input.result);
   if (computedMerkleRoot !== input.merkleRoot || input.result.merkleRoot !== input.merkleRoot) {
@@ -146,11 +148,28 @@ export async function verifyBoomerangExport(input: {
     const expected = await sha256Hex(canonicalJson(unsigned));
     if (signature !== expected) return { accepted: false, status: "REJECTED", reason: `Envelope integrity mismatch for ${envelope.artifact_cid}.`, computedMerkleRoot };
   }
-  if (input.signatureHex && input.pubkeyHex) {
+  const hasAnyAttestation = Boolean(input.signatureHex || input.pubkeyHex || input.keyId);
+  const hasCompleteAttestation = Boolean(input.signatureHex && input.pubkeyHex && input.keyId);
+  if (input.result.serverAttestation === "ED25519_ATTESTED" && !hasCompleteAttestation) {
+    return { accepted: false, status: "REJECTED", reason: "Persisted Ed25519 attestation metadata is incomplete.", computedMerkleRoot };
+  }
+  if (hasAnyAttestation && !hasCompleteAttestation) {
+    return { accepted: false, status: "REJECTED", reason: "Ed25519 attestation metadata is incomplete.", computedMerkleRoot };
+  }
+  if (hasCompleteAttestation) {
+    if (typeof input.signatureHex !== "string" || typeof input.pubkeyHex !== "string" || typeof input.keyId !== "string") {
+      return { accepted: false, status: "REJECTED", reason: "Ed25519 attestation metadata is incomplete.", computedMerkleRoot };
+    }
     try {
+      const signatureHex = input.signatureHex;
+      const pubkeyHex = input.pubkeyHex;
+      const keyId = input.keyId;
       const spkiPrefix = Buffer.from("302a300506032b6570032100", "hex");
-      const publicKey = createPublicKey({ key: Buffer.concat([spkiPrefix, Buffer.from(input.pubkeyHex, "hex")]), format: "der", type: "spki" });
-      if (!verifySignature(null, Buffer.from(input.merkleRoot, "utf8"), publicKey, Buffer.from(input.signatureHex, "hex"))) {
+      const publicKey = createPublicKey({ key: Buffer.concat([spkiPrefix, Buffer.from(pubkeyHex, "hex")]), format: "der", type: "spki" });
+      if (publicKey.asymmetricKeyType !== "ed25519" || deriveKeiraKeyId(publicKey.export({ type: "spki", format: "pem" }).toString()) !== keyId) {
+        return { accepted: false, status: "REJECTED", reason: "Ed25519 key ID is not bound to the attested public key.", computedMerkleRoot };
+      }
+      if (!verifySignature(null, Buffer.from(input.merkleRoot, "utf8"), publicKey, Buffer.from(signatureHex, "hex"))) {
         return { accepted: false, status: "REJECTED", reason: "Ed25519 attestation signature rejected.", computedMerkleRoot };
       }
     } catch {

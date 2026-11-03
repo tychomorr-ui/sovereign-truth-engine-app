@@ -689,6 +689,7 @@ export default function PortalChat() {
         merkleRoot: boomerangResult.merkleRoot,
         signatureHex: boomerangResult.serverSignatureHex ?? null,
         pubkeyHex: boomerangResult.serverPubkeyHex ?? null,
+        keyId: boomerangResult.serverKeyId ?? null,
       });
       setMistStatus(`${verification.status}: ${verification.reason}`);
     } catch (error) {

@@ -1,9 +1,10 @@
-import { generateKeyPairSync, sign } from "node:crypto";
+import { sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { ingestTextDocument } from "../client/src/lib/corpus/ingest";
 import { runBoomerangSwarm } from "../client/src/lib/boomerang/swarm";
 import type { ManifoldCandidate } from "../client/src/lib/boomerang/types";
 import { verifyBoomerangExport } from "./boomerang-telemetry";
+import { createKeiraEd25519KeyPair } from "./keira-identity";
 
 async function resultFixture() {
   const ingestion = await ingestTextDocument({
@@ -56,14 +57,17 @@ describe("Boomerang forensic telemetry boundary", () => {
 
   it("verifies valid Ed25519 attestation and rejects wrong or malformed keys/signatures", async () => {
     const result = await resultFixture();
-    const first = generateKeyPairSync("ed25519");
-    const second = generateKeyPairSync("ed25519");
-    const publicKeyHex = first.publicKey.export({ type: "spki", format: "der" }).subarray(-32).toString("hex");
-    const wrongPublicKeyHex = second.publicKey.export({ type: "spki", format: "der" }).subarray(-32).toString("hex");
-    const signatureHex = sign(null, Buffer.from(result.merkleRoot, "utf8"), first.privateKey).toString("hex");
+    const first = createKeiraEd25519KeyPair();
+    const second = createKeiraEd25519KeyPair();
+    const publicKeyHex = Buffer.from(first.publicKeyPem.replace(/-----[^-]+-----|\s/g, ""), "base64");
+    const wrongPublicKeyHex = Buffer.from(second.publicKeyPem.replace(/-----[^-]+-----|\s/g, ""), "base64");
+    const signatureHex = sign(null, Buffer.from(result.merkleRoot, "utf8"), first.privateKeyPem).toString("hex");
+    const rawPublicKeyHex = publicKeyHex.subarray(-32).toString("hex");
+    const rawWrongPublicKeyHex = wrongPublicKeyHex.subarray(-32).toString("hex");
 
-    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex, pubkeyHex: publicKeyHex })).resolves.toMatchObject({ accepted: true, status: "VERIFIED" });
-    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex, pubkeyHex: wrongPublicKeyHex })).resolves.toMatchObject({ accepted: false, status: "REJECTED" });
-    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex: "00", pubkeyHex: publicKeyHex })).resolves.toMatchObject({ accepted: false, status: "REJECTED" });
+    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex, pubkeyHex: rawPublicKeyHex, keyId: first.keyId })).resolves.toMatchObject({ accepted: true, status: "VERIFIED" });
+    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex, pubkeyHex: rawWrongPublicKeyHex, keyId: second.keyId })).resolves.toMatchObject({ accepted: false, status: "REJECTED" });
+    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex, pubkeyHex: rawPublicKeyHex, keyId: second.keyId })).resolves.toMatchObject({ accepted: false, status: "REJECTED" });
+    await expect(verifyBoomerangExport({ result, merkleRoot: result.merkleRoot, signatureHex: "00", pubkeyHex: rawPublicKeyHex, keyId: first.keyId })).resolves.toMatchObject({ accepted: false, status: "REJECTED" });
   });
 });

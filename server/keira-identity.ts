@@ -73,6 +73,10 @@ export function sha256Base64Url(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("base64url");
 }
 
+export function deriveKeiraKeyId(publicKeyPem: string): string {
+  return `keira-ed25519-${sha256Base64Url(publicKeyPem).slice(0, 20)}`;
+}
+
 export function createKeiraEd25519KeyPair(): { publicKeyPem: string; privateKeyPem: string; fingerprint: string; keyId: string } {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
   const publicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
@@ -82,7 +86,7 @@ export function createKeiraEd25519KeyPair(): { publicKeyPem: string; privateKeyP
     publicKeyPem,
     privateKeyPem,
     fingerprint,
-    keyId: `keira-ed25519-${fingerprint.slice(0, 20)}`,
+    keyId: deriveKeiraKeyId(publicKeyPem),
   };
 }
 
