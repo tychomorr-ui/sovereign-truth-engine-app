@@ -11,7 +11,7 @@
 | ARCHANGEL | `UNKNOWN` | No bounded adapter, signed command exchange, or live control-plane proof in KEIRA evidence |
 | Pharo-Lapse | `DOCUMENTED` | KEIRA contains local envelope/integrity concepts; network transport is not proven |
 | Tesseract | `PARTIALLY_VERIFIED` | Separate local checkout lineage at `95065d9` and recovered Gate 5A source lineage at `536368b`; not reconciled |
-| VALKYRIE | `PARTIALLY_VERIFIED` | Gate 5A source and staging result are supplied; restart proof remains open |
+| VALKYRIE | `PARTIALLY_VERIFIED` | Gate 5A restart/replay proof passed in isolated staging; challenge reuse was accepted, so authorization lifecycle remains incomplete |
 | KEIRA | `VERIFIED` locally | Current repository proves local deterministic, MIST, Boomerang, receipt, and attestation surfaces |
 | Monarch-OS | `DOCUMENTED` | Repository existence supplied; source/runtime audit pending |
 | Project Reclaim | `DOCUMENTED` | Staging gateway repository evidence only; live node not proven |

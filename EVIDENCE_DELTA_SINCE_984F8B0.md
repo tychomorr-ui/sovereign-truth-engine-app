@@ -29,3 +29,9 @@ These remain at the `984f8b0` status because no new evidence was supplied:
 ## Interpretation rule
 
 A repository or commit can establish source existence and a code lineage. It cannot, by itself, establish a live runtime, production readiness, authority relationship, endpoint contract, key possession, or successful cross-node operation.
+
+## Gate 5A process-restart proof update
+
+The separate-process restart proof was executed against `XINUS-Tesseract-A@536368b` in isolated staging. A valid `REFRESH_SIGNED_STATUS` completed before restart; its signed receipt verified; request state persisted; a second worker recognized the prior request as `DUPLICATE`; tampered and expired authorization were rejected; and the network trap was not triggered.
+
+The overall Gate 5A status remains `VERIFIED_WITH_GAPS`, not `VERIFIED_FROM_TEST`, because a newly signed request using the original challenge was accepted after restart. Challenge reuse therefore remains an open security failure. No production readiness claim is made. See `GATE5A_PROCESS_RESTART_PROOF_536368B.md`.

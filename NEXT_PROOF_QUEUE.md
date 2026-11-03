@@ -11,7 +11,11 @@
 
 **Pass condition:** The same state and security invariants are recovered after restart without recreating authority from an untrusted client.
 
-**Current status:** `UNKNOWN`; supplied staging result remains `VERIFIED_WITH_GAPS`.
+**Current status:** `VERIFIED_WITH_GAPS`. Separate-process restart and durable replay passed on 2026-11-02; challenge reuse was incorrectly accepted and must be rejected before this gate can pass.
+
+### Immediate follow-up: challenge single-use enforcement
+
+The restart proof exposed a concrete implementation gap: the same persisted challenge can authorize a distinct valid request after the first request completes. Add a focused, fail-closed test and implementation change only after explicit authorization; then rerun the two-process proof. Do not promote Gate 5A to production-ready until this passes.
 
 ## 2. Tesseract / VALKYRIE evidence alignment
 
