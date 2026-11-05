@@ -1,9 +1,10 @@
 # Gate 5A Process-Restart Proof
 
-**Classification:** `VERIFIED_WITH_GAPS`  
-**Scope:** isolated staging only  
-**KEIRA evidence baseline preserved:** `59d5ea2`  
-**Recovered source:** `tychomorr-ui/XINUS-Tesseract-A` at commit `536368b1527839df78269f9388a81125b07027a4`
+**Classification:** `VERIFIED_FROM_TEST`
+**Scope:** isolated staging only
+**KEIRA evidence baseline preserved:** `59d5ea2`
+**Recovered source baseline:** `tychomorr-ui/XINUS-Tesseract-A@536368b1527839df78269f9388a81125b07027a4`
+**Single-use fix commit:** isolated staging commit `906e22b`
 
 ## Repository and isolation
 
@@ -11,11 +12,11 @@ The proof used a fresh detached clone at:
 
 `/tmp/keira-gate5a-proof-1793666692/repo`
 
-The existing local Tesseract checkout was not opened or modified. `tesseract-sovereign` was not pulled, overwritten, deployed, or contacted. State was written only beneath the temporary proof directory:
+The existing local Tesseract checkout was not opened or modified. `tesseract-sovereign` was not pulled, overwritten, deployed, or contacted. State was written only beneath a temporary proof directory:
 
-`/tmp/gate5a-restart-proof.UYYQWg/state`
+`/tmp/gate5a-restart-proof-fixed.BwfPqx`
 
-The source checkout remained clean at the tested commit.
+The source fix was committed only in the isolated staging clone as `906e22b`; it was not pushed or deployed.
 
 ## Implementation exercised
 
@@ -25,14 +26,15 @@ The proof exercised the actual implementation in:
 - `shared/valkyrie-gate5a.ts`
 - `server/atmos-manifest.ts`
 
-The existing repository runner and tests were also inspected:
+The single-use correction adds an atomic filesystem claim at:
 
-- `scripts/gate5a-e2e.ts`
-- `server/valkyrie-gate5a-staging.test.ts`
+`challenges/<challengeId>.consumed/record.json`
 
-The existing runner does not perform a process restart; its report explicitly identified that gap. Therefore, a temporary external worker was used only as a test driver. It did not modify repository source.
+The directory is created with exclusive `mkdir`; a second request using the same challenge receives `REPLAY`. The request replay check remains separate, so the identical request remains `DUPLICATE`.
 
-## Commands
+The external worker was only a test driver and did not modify repository source.
+
+## Commands and results
 
 Dependencies were installed in the fresh clone with:
 
@@ -40,67 +42,83 @@ Dependencies were installed in the fresh clone with:
 pnpm install --frozen-lockfile
 ```
 
-The actual restart proof ran two independent worker processes against the same temporary filesystem state directory:
-
-```text
-pnpm exec tsx /tmp/gate5a-proof-worker.mts first /tmp/gate5a-restart-proof.UYYQWg
-pnpm exec tsx /tmp/gate5a-proof-worker.mts after /tmp/gate5a-restart-proof.UYYQWg
-```
-
-The recovered focused suite also ran:
+Focused validation after the fix:
 
 ```text
 pnpm vitest run server/valkyrie-gate5a-staging.test.ts
 pnpm check
+git diff --check
 ```
 
-Results: 21 focused tests passed; TypeScript validation passed.
+Result: **22 focused tests passed; TypeScript validation passed.**
 
-## Results
+Two independent worker processes then ran against one shared temporary state directory:
+
+```text
+pnpm exec tsx /tmp/gate5a-proof-worker.mts first /tmp/gate5a-restart-proof-fixed.BwfPqx
+pnpm exec tsx /tmp/gate5a-proof-worker.mts after /tmp/gate5a-restart-proof-fixed.BwfPqx
+```
+
+## Restart-proof results
 
 | Proof requirement | Result | Evidence |
 |---|---|---|
-| Valid bounded `REFRESH_SIGNED_STATUS` accepted | `PASS` | Pre-restart worker returned `COMPLETED` for `VALKYRIE-STAGING` / `GATE_5A_STAGING` |
-| Signed receipt produced and verified | `PASS` | Pre-restart result returned `receiptVerified: true`; receipt outcome was `COMPLETED` |
-| Request/replay state durably persisted | `PASS` | State directory contained challenge JSON plus request `dispatch.json` and `record.json` files |
-| Process terminated and restarted | `PASS` | Pre-restart worker PID `244514` exited; post-restart worker PID `244580` started against the same state directory |
-| Previously accepted request remains replay | `PASS` | Post-restart replay returned `DUPLICATE` with outcome `COMPLETED` |
-| Challenge reuse rejected | `FAIL` | A new valid request using the original challenge returned `COMPLETED`; `reusedChallengeCode` was `null` |
-| Tampered authorization rejected | `PASS` | Tampered dispatch signature returned `FAILED` / `SIGNATURE_INVALID` |
+| Valid bounded `REFRESH_SIGNED_STATUS` accepted | `PASS` | Pre-restart worker returned `COMPLETED` |
+| Signed receipt produced and verified | `PASS` | Pre-restart result returned `receiptVerified: true` and `receiptOutcome: COMPLETED` |
+| Request/replay state durably persisted | `PASS` | Shared state contained challenge JSON, request `dispatch.json`, request `record.json`, and consumed marker files |
+| Process terminated and restarted | `PASS` | Pre-restart PID `245470` exited; post-restart PID `245538` started against the same state directory |
+| Previously accepted identical request remains replay | `PASS` | Post-restart replay returned `DUPLICATE` / `COMPLETED` |
+| New valid request reusing consumed challenge rejected | `PASS` | Post-restart result returned `FAILED` / `REPLAY` |
+| Challenge reuse is atomically single-use | `PASS` | Consumed marker directory was created with exclusive `mkdir`; reuse cannot claim it again |
+| Tampered authorization rejected | `PASS` | Tampered dispatch returned `FAILED` / `SIGNATURE_INVALID` |
 | Expired authorization rejected | `PASS` | Expired dispatch returned `EXPIRED` / `EXPIRED` |
-| No production contact | `PASS` | Runtime `fetch` trap was not called; implementation scan found no fetch, HTTP client, socket, subprocess, SSH, shell, firewall, or command-execution capability |
-| No unrestricted execution path | `PASS` | Gate 5A implementation imports only local crypto, filesystem, path, Express types, and local schema/types |
+| No production contact | `PASS` | Runtime fetch trap was not called; no external node was contacted |
+| No unrestricted execution path | `PASS` | Gate 5A path exposes no shell, SSH, arbitrary subprocess, firewall, network mutation, unrestricted command, or external HTTP capability |
 
-## Pre-restart result
+## Post-restart output
 
-The first isolated worker accepted a freshly challenged and signed request, produced a cryptographically verified receipt, and persisted the lifecycle. The request ID was `restart-proof-1793666779820-lhogq5hld4k`; the challenge ID was `2550afe7-2c75-4896-83d0-4310c175a720`.
+The actual post-restart proof output was:
 
-## Restart event
+```text
+replayStatus=DUPLICATE
+replayOutcome=COMPLETED
+reusedChallengeStatus=FAILED
+reusedChallengeCode=REPLAY
+tamperedStatus=FAILED
+tamperedCode=SIGNATURE_INVALID
+expiredStatus=EXPIRED
+expiredCode=EXPIRED
+networkTrapStatus=DUPLICATE
+fetchCalled=false
+```
 
-The first worker terminated normally after writing durable state. A second independently started worker loaded the same state directory. No service manager, deployment, production process, or external node was restarted.
+The state directory contained:
 
-## Post-restart and replay result
+```text
+challenges/<challengeId>.json
+challenges/<challengeId>.consumed/record.json
+requests/<requestId>/dispatch.json
+requests/<requestId>/record.json
+```
 
-The second worker recognized the original request as `DUPLICATE`. This proves process-restart recovery of the persisted request record and replay decision.
+## Full repository suite limitation
 
-## Challenge-reuse result
+The complete repository command was also attempted:
 
-The second worker created a distinct, correctly signed request using the original challenge ID. The implementation accepted it as `COMPLETED`. This fails the explicit requirement that a challenge be single-use or otherwise rejected on reuse. The existing source validates challenge identity and expiry but does not persist or enforce a consumed-challenge state.
+```text
+pnpm test
+```
 
-This is the blocking gap. The implementation was not modified to make the test pass.
-
-## Authorization/tamper result
-
-A tampered dispatch signature was rejected with `SIGNATURE_INVALID`. An expired dispatch was rejected with `EXPIRED`. The focused suite additionally passed unknown-challenge, request-hash, evidence-signature, stale-evidence, target, scope, manifest, and code-hash rejection cases.
+It produced **59 passed test files, 2 skipped test files, and 3 failed test files; 297 passed tests, 3 skipped tests, and 10 failed tests**. The failures were unrelated database-backed VALKYRIE tests reporting missing tables such as `valkyrie_federated_mode`, `lex_primordialis`, `erebus_7_protocol`, `adjudication_cases`, `truth_coin_ledger`, and `valkyrie_nodes`. No schema mutation was performed to mask those failures. The focused Gate 5A suite and restart proof passed independently.
 
 ## Safety and handling status
 
-No production endpoint, production database, production key, DNS route, or external node was contacted by the Gate 5A proof. The temporary worker generated ephemeral staging Ed25519 keys solely for the isolated test; private-key contents were not printed, inspected, committed, imported, or added to the evidence artifacts. Only public test results and filesystem paths were recorded.
+No production endpoint, production database, production key, DNS route, or external node was contacted. The temporary worker generated ephemeral staging Ed25519 keys solely for the isolated test; private-key contents were not printed, inspected, committed, imported, or added to the evidence artifacts. Only public test results and filesystem paths were recorded.
 
-The temporary driver used subprocesses to create the required isolated process boundary. That was test orchestration outside the Gate 5A implementation; the Gate 5A path itself exposes no shell, SSH, arbitrary subprocess, firewall, network mutation, unrestricted command, or external HTTP capability.
+The temporary driver used subprocesses to create the required isolated process boundary. That orchestration was outside the Gate 5A implementation; the Gate 5A path itself exposes no shell, SSH, arbitrary subprocess, firewall, network mutation, unrestricted command, or external HTTP capability.
 
 ## Final classification
 
-`VERIFIED_WITH_GAPS`
+`VERIFIED_FROM_TEST`
 
-The separate process-restart and durable replay proof actually executed and passed. Full Gate 5A verification is not established because challenge reuse was accepted rather than rejected. Gate 5A must not be classified as production-ready on the basis of this run.
+The isolated Gate 5A process-restart proof executed and passed after the single-use challenge fix. The proof demonstrates durable request replay recognition, atomic challenge consumption, signed receipt verification, tamper/expiry rejection, and no production contact. This classification applies only to the isolated staging behavior tested here; it does **not** establish production deployment readiness, cross-node authority, or a clean repository-wide test suite.
